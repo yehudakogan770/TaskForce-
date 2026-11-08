@@ -2066,7 +2066,7 @@
   async function backUp() {
     state.prefs.lastBackup = Date.now();
     const data = JSON.stringify({ app: "TaskForce", version: 1, saved: new Date().toISOString(), state }, null, 1);
-    const name = "TaskForce backup " + keyOf() + ".json";
+    const name = "TaskForce backup.json";  // always the same name, so each backup replaces the last one
     const file = new File([data], name, { type: "application/json" });
     try {
       if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); commit(); return; }
