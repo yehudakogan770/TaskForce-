@@ -13,37 +13,28 @@
 <meta name="apple-mobile-web-app-title" content="Checklist">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0d1017" media="(prefers-color-scheme: dark)">
 <style>
   /* Layout: a ruled planner sheet — date block, rings, the day's schedule as a table, then month and patterns */
   :root {
-    --c1: #000000;  /* ink */
-    --c2: #404040;  /* dark grey */
-    --c3: #8f8f8f;  /* mid grey */
-    --c4: #d9d9d9;  /* light grey */
+    --c1: #10131a;  /* ink */
+    --c2: #3d4555;  /* dark slate */
+    --c3: #8a93a6;  /* mid slate */
+    --c4: #e2e7f1;  /* light blue-grey */
     --c5: #ffffff;  /* paper */
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --mono: var(--font);
-    --accent: var(--c1);     /* buttons and highlights */
-    --on-accent: var(--c5);
-    --ring1: var(--c1); --ring2: var(--c2); --ring3: var(--c3);
+    --accent: #2f5bea;       /* buttons and highlights */
+    --on-accent: #ffffff;
+    --ring1: #2f5bea; --ring2: #f0643c; --ring3: #18a058;
   }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --c1: #ffffff; --c2: #c4c4c4; --c3: #7a7a7a; --c4: #2e2e2e; --c5: #000000; color-scheme: dark; }
+    :root:not([data-theme="light"]) { --c1: #f2f4f8; --c2: #c3c9d6; --c3: #7a8396; --c4: #262c38; --c5: #0d1017;
+      --accent: #6b8cff; --on-accent: #0d1017; --ring1: #6b8cff; --ring2: #ff8a65; --ring3: #3ecf8e; color-scheme: dark; }
   }
-  :root[data-theme="dark"] { --c1: #ffffff; --c2: #c4c4c4; --c3: #7a7a7a; --c4: #2e2e2e; --c5: #000000; color-scheme: dark; }
+  :root[data-theme="dark"] { --c1: #f2f4f8; --c2: #c3c9d6; --c3: #7a8396; --c4: #262c38; --c5: #0d1017;
+    --accent: #6b8cff; --on-accent: #0d1017; --ring1: #6b8cff; --ring2: #ff8a65; --ring3: #3ecf8e; color-scheme: dark; }
 
-  /* Looks, picked at the bottom of each page */
-  :root[data-look="color"] { --c1: #10131a; --c2: #3d4555; --c3: #8a93a6; --c4: #e2e7f1; --c5: #ffffff;
-    --accent: #2f5bea; --on-accent: #ffffff; --ring1: #2f5bea; --ring2: #f0643c; --ring3: #18a058; }
-  @media (prefers-color-scheme: dark) {
-    :root[data-look="color"]:not([data-theme="light"]) { --c1: #f2f4f8; --c2: #c3c9d6; --c3: #7a8396; --c4: #262c38; --c5: #0d1017;
-      --accent: #6b8cff; --on-accent: #0d1017; --ring1: #6b8cff; --ring2: #ff8a65; --ring3: #3ecf8e; }
-  }
-  :root[data-look="color"][data-theme="dark"] { --c1: #f2f4f8; --c2: #c3c9d6; --c3: #7a8396; --c4: #262c38; --c5: #0d1017;
-    --accent: #6b8cff; --on-accent: #0d1017; --ring1: #6b8cff; --ring2: #ff8a65; --ring3: #3ecf8e; }
-  :root[data-look="serif"] { --font: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif; }
-  :root[data-look="rounded"] { --font: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Hiragino Maru Gothic ProN", -apple-system, sans-serif; }
 
   html { -webkit-text-size-adjust: 100%; }
   * { box-sizing: border-box; border-radius: 0; }
@@ -356,13 +347,6 @@
   input::-webkit-datetime-edit { line-height: 44px; padding: 0; }
   .debt-form label, .rc-form label, .rc-label, .fields label { min-width: 0; }
 
-  .looks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; width: 100%; }
-  .looks span { margin-right: 4px; }
-  .look { font: inherit; font-size: 13px; padding: 5px 10px; border: 1px solid var(--c3); background: var(--c5); color: var(--c1); cursor: pointer; }
-  .look[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-  .look[data-look="serif"] { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; }
-  .look[data-look="rounded"] { font-family: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", -apple-system, sans-serif; }
-
   button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
   html { overflow-x: clip; }
@@ -470,7 +454,6 @@
   </details>
 
   <footer>
-    <div class="looks" role="group" aria-label="Look"></div>
     <span id="sync-status">Saved on this device</span>
     <div class="links">
       <button type="button" id="sound-toggle">Reminder sound: off</button>
@@ -504,7 +487,6 @@
     </section>
 
     <footer>
-      <div class="looks" role="group" aria-label="Look"></div>
       <span id="owe-sync-status">Saved on this device</span>
     </footer>
   </div>
@@ -552,7 +534,6 @@
     </section>
 
     <footer>
-      <div class="looks" role="group" aria-label="Look"></div>
       <span id="rc-sync-status">Saved on this device</span>
     </footer>
   </div>
@@ -1772,20 +1753,6 @@
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && $("rc-text").value.trim()) readReceipt(null, $("rc-text").value.trim());
   });
 
-  // ---- look: Classic, Color, Serif or Rounded, saved with everything else
-  const LOOKS = [["classic", "Classic"], ["color", "Color"], ["serif", "Serif"], ["rounded", "Rounded"]];
-  function applyLook() {
-    const look = state.prefs.look || "classic";
-    if (look === "classic") delete document.documentElement.dataset.look; else document.documentElement.dataset.look = look;
-    document.querySelectorAll(".looks").forEach(el => {
-      el.innerHTML = "<span>Look</span>" + LOOKS.map(([k, n]) => '<button type="button" class="look" data-look="' + k + '" aria-pressed="' + (k === look) + '">' + n + '</button>').join("");
-    });
-  }
-  document.addEventListener("click", e => {
-    const b = e.target.closest(".look"); if (!b) return;
-    state.prefs.look = b.dataset.look; applyLook(); commit();
-  });
-
   // ---- reminders: a banner (and an optional sound) when a task's start time arrives while the page is open
   let audio = null, lastCheck = nowMinutes(), bannerId = null;
   function renderSoundBtn() { $("sound-toggle").textContent = "Reminder sound: " + (state.prefs.sound ? "on" : "off"); }
@@ -1849,7 +1816,7 @@
     catch { setSync("Saved on this device only"); }
   }
 
-  prune(); saveLocal(); renderSoundBtn(); applyLook(); render();
+  prune(); saveLocal(); renderSoundBtn(); render();
   setInterval(() => { checkReminders(); if (!editingId && !oweEditId && !refundOpenId && !addAmtId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
 
   (async () => {
@@ -1864,7 +1831,7 @@
       const data = snap.exists ? snap.data() : null;
       if (data && Array.isArray(data.items)) {
         state = normalize(JSON.parse(JSON.stringify(data)));
-        prune(); saveLocal(); renderSoundBtn(); applyLook(); render();
+        prune(); saveLocal(); renderSoundBtn(); render();
         setSync("Saved to your account");
       } else {
         await pushRemote();
