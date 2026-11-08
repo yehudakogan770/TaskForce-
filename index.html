@@ -158,6 +158,32 @@
   .btn.ghost { background: var(--c5); color: var(--c1); border-width: 1px; padding: 6px 12px; font-size: 12.5px; font-weight: 500; }
   .btn.ghost:hover { background: var(--c4); }
 
+  /* reminders */
+  .rems { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--c4); }
+  .rem { display: grid; grid-template-columns: 30px 1fr 32px; gap: 10px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--c4); }
+  .rem.done .rem-text { color: var(--c3); text-decoration: line-through; }
+  .rem.done .check { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .rem.done .check svg { opacity: 1; }
+  .rem-text { font: inherit; color: var(--c1); background: none; border: 0; padding: 0; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+  .rem-when { display: block; font-size: 12.5px; color: var(--c3); }
+  .rem-when.soon { color: var(--accent); font-weight: 600; }
+  .rems .empty { padding: 14px 0; text-align: left; font-size: 13.5px; }
+  .rem-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; border: 1px solid var(--c4); margin-top: 10px; }
+  .rem-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--c2); min-width: 0; }
+  .rem-form .full { grid-column: 1 / -1; }
+  .add-rem { margin-top: 10px; }
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .cal-nav h2 { margin: 0; }
+  .cal-arrow { font: inherit; font-size: 22px; line-height: 1; width: 40px; height: 36px; border: 1px solid var(--c4); background: var(--c5); color: var(--c1); cursor: pointer; }
+  button.day { font: inherit; font-size: 12.5px; background: var(--c5); color: var(--c1); cursor: pointer; position: relative; flex-direction: column; justify-content: space-between; }
+  button.day.past { color: var(--c3); }
+  button.day.is-today { border: 2px solid var(--accent); }
+  button.day.selected { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .day .dots { font-size: 11px; font-weight: 700; color: var(--accent); }
+  .day.selected .dots { color: var(--on-accent); }
+  .day-panel { margin-top: 16px; }
+  .day-panel h3 { margin: 0 0 8px; font-size: 15px; }
+
   /* calendar */
   .cal-wrap { display: flex; flex-direction: column; gap: 4px; }
   .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
@@ -342,7 +368,7 @@
   @media (orientation: landscape) and (min-width: 640px) {
     .app { max-width: 1100px; }
     .tabs { width: calc(100% - 32px); max-width: 600px; margin-inline: auto; }
-    #page-checklist, #page-receipts { padding-inline: max(16px, calc((100% - 600px) / 2)); }
+    #page-reminders, #page-receipts { padding-inline: max(16px, calc((100% - 600px) / 2)); }
     /* left: owed to me, right: I owe */
     .money-cols { flex-direction: row-reverse; gap: 40px; align-items: flex-start; }
     .money-col { flex: 1 1 0; }
@@ -388,20 +414,19 @@
 <body>
 <div class="app">
   <div class="tabs" role="tablist" aria-label="Pages">
-    <span class="tab-ind" id="tab-ind" aria-hidden="true"><span class="tab-ind-labels" id="tab-ind-labels"><span>Checklist</span><span>Money</span><span>Receipts</span></span></span>
-    <button class="tab" type="button" role="tab" id="tab-checklist" aria-selected="true" aria-controls="page-checklist">Checklist</button>
+    <span class="tab-ind" id="tab-ind" aria-hidden="true"><span class="tab-ind-labels" id="tab-ind-labels"><span>Reminders</span><span>Money</span><span>Receipts</span></span></span>
+    <button class="tab" type="button" role="tab" id="tab-reminders" aria-selected="true" aria-controls="page-reminders">Reminders</button>
     <button class="tab" type="button" role="tab" id="tab-owe" aria-selected="false" aria-controls="page-owe">Money</button>
     <button class="tab" type="button" role="tab" id="tab-receipts" aria-selected="false" aria-controls="page-receipts">Receipts</button>
   </div>
 
   <div class="pager" id="pager">
-  <div class="page" id="page-checklist" role="tabpanel" aria-labelledby="tab-checklist">
+  <div class="page" id="page-reminders" role="tabpanel" aria-labelledby="tab-reminders">
   <header>
     <div class="head-row">
       <h1 id="date-line">Today</h1>
       <div class="clock" id="clock">--:--</div>
     </div>
-    <div class="streak" id="streak"></div>
   </header>
 
   <div class="banner" id="banner" role="status" hidden>
@@ -410,65 +435,40 @@
     <button class="btn ghost" type="button" id="banner-close">Dismiss</button>
   </div>
 
-  <section aria-labelledby="rings-title">
-    <h2 id="rings-title">Completed</h2>
-    <div class="rings" id="rings"></div>
-  </section>
+  <div class="notice" id="sample-notice" hidden>
+    <span>These are example reminders. Remove them and add your own.</span>
+    <button class="btn ghost" id="clear-samples" type="button">Clear examples</button>
+  </div>
 
-  <section aria-labelledby="list-title">
-    <h2 id="list-title">Schedule</h2>
-    <div class="notice" id="sample-notice" hidden>
-      <span>These are example tasks. Remove them and add your own.</span>
-      <button class="btn ghost" id="clear-samples" type="button">Clear examples</button>
-    </div>
-    <div class="wrap-up" id="wrap-up" hidden></div>
-    <table>
-      <tbody id="list"></tbody>
-    </table>
-    <p class="muted" style="margin-top:10px"><button type="button" class="linkish" id="toggle-other"></button></p>
-
-    <form class="add" id="add-form" autocomplete="off">
-      <div class="add-row">
-        <input type="time" id="new-time" aria-label="Start time" required>
-        <input type="text" id="new-text" placeholder="New task" aria-label="Task" maxlength="140" required>
-        <button class="btn" type="submit">Add</button>
-      </div>
-      <div><button type="button" class="linkish" id="toggle-options" aria-expanded="false">Options</button></div>
-      <div class="add-more" id="add-more" hidden>
-        <div class="fields">
-          <label>End time (optional)<input type="time" id="new-end"></label>
-          <label class="grow">Note (optional)<input type="text" id="new-note" maxlength="200"></label>
-        </div>
-        <div id="new-days"></div>
-      </div>
-    </form>
+  <section aria-labelledby="today-title">
+    <h2 id="today-title">Today</h2>
+    <ul class="rems" id="rem-today"></ul>
+    <div id="add-today"></div>
   </section>
 
   <section aria-labelledby="cal-title">
-    <h2 id="cal-title">This month</h2>
+    <div class="cal-nav">
+      <button type="button" class="cal-arrow" id="cal-prev" aria-label="Previous month">‹</button>
+      <h2 id="cal-title">Month</h2>
+      <button type="button" class="cal-arrow" id="cal-next" aria-label="Next month">›</button>
+    </div>
     <div class="cal-wrap">
       <div class="cal cal-head" aria-hidden="true"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
       <div class="cal" id="cal"></div>
     </div>
-    <div class="legend" aria-hidden="true">0% <i></i><i></i><i></i><i></i><i></i> 100%</div>
+    <div id="day-panel"></div>
   </section>
 
-  <section aria-labelledby="pat-title">
-    <h2 id="pat-title">Time of day, last 30 days</h2>
-    <div class="pats" id="patterns"></div>
+  <section aria-labelledby="general-title">
+    <h2 id="general-title">General</h2>
+    <ul class="rems" id="rem-general"></ul>
+    <div id="add-general"></div>
   </section>
-
-  <details class="tpl">
-    <summary>Start from a template</summary>
-    <div class="tpl-list" id="templates"></div>
-    <p class="muted" id="tpl-msg" style="margin-top:8px" hidden></p>
-  </details>
 
   <footer>
     <span id="sync-status">Saved on this device</span>
     <div class="links">
       <button type="button" id="sound-toggle">Reminder sound: off</button>
-      <button type="button" id="reset-day">Uncheck all for today</button>
     </div>
   </footer>
   </div>
@@ -573,21 +573,12 @@
   const sectionOf = t => toMin(t) < 720 ? "Morning" : toMin(t) < 1020 ? "Afternoon" : "Evening";
   const nowMinutes = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 
-  const mk = (time, text, extra = {}) => ({ id: uid(), time, text, ...extra });
-  const SAMPLE = [
-    ["07:00", "Wake up & drink water"], ["08:00", "Morning prayers", { end: "08:30" }], ["09:00", "Answer emails", { note: "Inbox to zero, then calendar" }],
-    ["12:30", "Lunch"], ["15:00", "Walk outside"], ["18:30", "Dinner with family"], ["22:00", "Lights out"]
-  ].map(([t, x, e]) => mk(t, x, { ...e, sample: true }));
-
-  const TEMPLATES = [
-    { name: "Work day", days: [1, 2, 3, 4, 5], tasks: [["07:00", "Wake up"], ["07:30", "Exercise"], ["09:00", "Start work"], ["12:30", "Lunch"], ["17:30", "Finish work"], ["19:00", "Dinner"], ["22:30", "Lights out"]] },
-    { name: "School day", days: [1, 2, 3, 4, 5], tasks: [["06:45", "Wake up"], ["07:30", "Leave for school"], ["15:30", "Homework"], ["18:00", "Dinner"], ["21:30", "Lights out"]] },
-    { name: "Day off", days: [0, 6], tasks: [["08:30", "Wake up"], ["10:00", "Walk outside"], ["13:00", "Lunch"], ["15:00", "Read"], ["19:00", "Dinner"], ["23:00", "Lights out"]] },
+  // reminders: { id, text, date? ("YYYY-MM-DD"; none = a general reminder), time? ("HH:MM"), done? }
+  const SAMPLE_REMINDERS = [
+    { id: uid(), text: "Call the bank about the card", date: keyOf(), time: "15:00", sample: true },
+    { id: uid(), text: "Pick up dry cleaning", date: (() => { const d = new Date(); d.setDate(d.getDate() + 3); return keyOf(d); })(), sample: true },
+    { id: uid(), text: "Renew passport", sample: true },
   ];
-
-  // items: { id, time, end?, text, note?, days? (weekday numbers; missing = every day), date? (one day only) }
-  // done[date] = [ids]   sched[date] = [ids planned that day]   skipped[date] = { id: reason }
-  // snoozed[date] = { id: { time, end? } }   totals[date] = count (older saves only)
   // debts: { id, who, amount, what, date (when it happened), due?, paid? (date paid) }
   const daysAgo = n => { const d = new Date(); d.setDate(d.getDate() + n); return keyOf(d); };
   const SAMPLE_DEBTS = [
@@ -603,380 +594,122 @@
     items: [{ name: "USB-C charging cable, 6 ft (2-pack)", qty: 1, price: 12.99 }, { name: "Spiral notebook, college ruled", qty: 3, price: 4.49 }],
     subtotal: 26.46, shipping: 0, tax: 2.35, total: 28.81, sample: true,
   }];
-  const blank = () => ({ items: SAMPLE, done: {}, sched: {}, skipped: {}, snoozed: {}, totals: {}, prefs: {}, debts: SAMPLE_DEBTS, receipts: SAMPLE_RECEIPTS, debtCats: [] });
-  const normalize = s => ({ ...blank(), ...s, items: Array.isArray(s.items) ? s.items : [], debtCats: (Array.isArray(s.debtCats) ? s.debtCats : []).map(c => typeof c === "string" ? { name: c, subs: [] } : { name: c.name, subs: c.subs || [] }) });
+  const blank = () => ({ reminders: SAMPLE_REMINDERS, prefs: {}, debts: SAMPLE_DEBTS, receipts: SAMPLE_RECEIPTS, debtCats: [] });
+  const normalize = s => ({ ...blank(), ...s, reminders: Array.isArray(s.reminders) ? s.reminders : SAMPLE_REMINDERS, debtCats: (Array.isArray(s.debtCats) ? s.debtCats : []).map(c => typeof c === "string" ? { name: c, subs: [] } : { name: c.name, subs: c.subs || [] }) });
   let state = blank();
-  try { const saved = JSON.parse(localStorage.getItem(LS_KEY)); if (saved && Array.isArray(saved.items)) state = normalize(saved); } catch {}
+  try { const saved = JSON.parse(localStorage.getItem(LS_KEY)); if (saved && typeof saved === "object") state = normalize(saved); } catch {}
 
   const $ = id => document.getElementById(id);
-  let editingId = null, showOther = false, deleteArmed = false;
+  // ---- reminders page: today at the top, a month calendar, then general reminders
+  let remEditId = null, remAdd = null, selDate = null, calMonth = null;
 
-  // ---- schedule logic
-  function scheduledOn(item, k) {
-    if (item.date) return item.date === k;
-    return !item.days || item.days.includes(dateOf(k).getDay());
-  }
-  const itemsFor = k => state.items.filter(i => scheduledOn(i, k));
-  function effective(item) {
-    const s = (state.snoozed[keyOf()] || {})[item.id];
-    return s ? { ...item, time: s.time, end: s.end || null, snoozed: true } : item;
-  }
-  function todayRows() {
-    return itemsFor(keyOf()).map(effective).sort((a, b) => toMin(a.time) - toMin(b.time));
-  }
-  function statusFor(item, idx, rows, nowMin, done, skipped) {
-    if (done.has(item.id)) return "done";
-    if (skipped[item.id] !== undefined) return "skipped";
-    const start = toMin(item.time);
-    const next = rows.slice(idx + 1).find(r => toMin(r.time) > start);
-    const end = item.end ? toMin(item.end) : next ? toMin(next.time) : 24 * 60;
-    if (nowMin >= start && nowMin < end) return "now";
-    if (nowMin >= end) return "missed";
-    return "later";
-  }
-  function daysLabel(item) {
-    if (item.date) return "Only " + dateOf(item.date).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    if (!item.days || item.days.length === 7) return "";
-    const d = [...item.days].sort().join();
-    if (d === "1,2,3,4,5") return "Mon–Fri";
-    if (d === "0,6") return "Weekends";
-    return [...item.days].sort().map(i => DAY_NAMES[i]).join(", ");
-  }
-
-  // planned/done for one date
-  function dayInfo(k) {
-    const skipped = state.skipped[k] || {};
-    const doneSet = new Set(state.done[k] || []);
-    let ids;
-    if (k === keyOf()) ids = itemsFor(k).map(i => i.id);
-    else if (state.sched[k]) ids = state.sched[k];
-    else {
-      const planned = state.totals[k] || 0;
-      return { planned, done: Math.min(doneSet.size, planned), ids: null };
-    }
-    ids = ids.filter(id => skipped[id] === undefined);
-    return { planned: ids.length, done: ids.filter(id => doneSet.has(id)).length, ids, doneSet };
-  }
-  const datesBack = n => Array.from({ length: n }, (_, i) => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - i); return keyOf(d); });
-
-  // ---- render
   function render() {
     const now = new Date();
     $("date-line").textContent = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
     $("clock").textContent = fmt(toHHMM(nowMinutes()));
-    $("sample-notice").hidden = !state.items.some(i => i.sample);
-    renderStreak();
-    renderRings();
-    renderList();
-    renderCalendar();
-    renderPatterns();
+    renderReminders();
     renderOwe();
     renderReceipts();
   }
 
-  function renderStreak() {
-    let streak = 0;
-    for (const k of datesBack(400)) {
-      const info = dayInfo(k);
-      const full = info.planned > 0 && info.done >= info.planned;
-      if (k === keyOf()) { if (full) streak++; continue; }
-      if (!info.ids && !state.totals[k]) break;
-      if (info.planned === 0) continue;
-      if (!full) break;
-      streak++;
-    }
-    $("streak").innerHTML = streak
-      ? "Streak: <strong>" + streak + " day" + (streak === 1 ? "" : "s") + "</strong> with everything done"
-      : "Streak: <strong>0 days</strong>. Finish all of today's tasks to start one.";
+  const byTime = (a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || (a.time || "99").localeCompare(b.time || "99");
+  function remHTML(r, showDate) {
+    const when = [showDate && r.date ? shortDate(r.date) : "", r.time ? fmt(r.time) : ""].filter(Boolean).join(" · ");
+    const soon = r.date === keyOf() && r.time && !r.done && toMin(r.time) >= nowMinutes() && toMin(r.time) - nowMinutes() <= 60;
+    return '<li class="rem' + (r.done ? " done" : "") + '" data-rid="' + r.id + '">' +
+      '<button class="check" type="button" data-ract2="done" aria-pressed="' + !!r.done + '" aria-label="' + (r.done ? "Mark not done: " : "Mark done: ") + esc(r.text) + '">' + CHECK + '</button>' +
+      '<button class="rem-text" type="button" data-ract2="edit">' + esc(r.text) + (when ? '<span class="rem-when' + (soon ? " soon" : "") + '">' + esc(when) + '</span>' : "") + '</button>' +
+      '<button class="remove" type="button" data-ract2="delete" aria-label="Remove ' + esc(r.text) + '">' + CROSS + '</button>' +
+    '</li>' + (remEditId === r.id ? '<li>' + remFormHTML("edit", r) + '</li>' : "");
+  }
+  function remFormHTML(scope, r) {
+    const dated = scope !== "general";
+    const date = r ? (r.date || "") : scope === "today" ? keyOf() : scope === "day" ? selDate : "";
+    return '<form class="rem-form" data-rscope="' + scope + '" autocomplete="off">' +
+      '<label class="full">Reminder<input type="text" id="rf-text-' + scope + '" maxlength="140" required value="' + (r ? esc(r.text) : "") + '"></label>' +
+      (dated || r ? '<label>Date' + (scope === "edit" ? " (empty = general)" : "") + '<input type="date" id="rf-date-' + scope + '" value="' + date + '"></label>' +
+        '<label>Time (optional)<input type="time" id="rf-time-' + scope + '" value="' + (r && r.time ? r.time : "") + '"></label>' : "") +
+      '<div class="actions full"><button class="btn" type="submit">' + (r ? "Save" : "Add") + '</button>' +
+      '<button class="btn ghost" type="button" data-rclose="1">Cancel</button></div></form>';
+  }
+  function addArea(scope) {
+    return remAdd === scope ? remFormHTML(scope) : '<button class="btn ghost add-rem" type="button" data-radd="' + scope + '">+ Add reminder</button>';
   }
 
-  function renderRings() {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const span = from => { const keys = []; const d = new Date(from); while (d <= today) { keys.push(keyOf(d)); d.setDate(d.getDate() + 1); } return keys; };
-    const sum = keys => keys.reduce((a, k) => { const i = dayInfo(k); return { done: a.done + i.done, planned: a.planned + i.planned }; }, { done: 0, planned: 0 });
-    const weekStart = new Date(today); weekStart.setDate(today.getDate() - today.getDay());
-    const rings = [
-      { name: "Today", color: "var(--ring1)", ...sum([keyOf(today)]) },
-      { name: "This week", color: "var(--ring2)", ...sum(span(weekStart)) },
-      { name: "This month", color: "var(--ring3)", ...sum(span(new Date(today.getFullYear(), today.getMonth(), 1))) },
-    ];
-    const R = 40, C = 2 * Math.PI * R;
-    $("rings").innerHTML = rings.map(r => {
-      const pct = r.planned ? Math.min(100, Math.round(r.done / r.planned * 100)) : 0;
-      return '<div class="ring" role="img" aria-label="' + r.name + ': ' + r.done + ' of ' + r.planned + ' done, ' + pct + ' percent">' +
-        '<svg viewBox="0 0 100 100" aria-hidden="true">' +
-          '<circle class="track" cx="50" cy="50" r="' + R + '" fill="none" stroke-width="10"/>' +
-          '<circle class="arc" cx="50" cy="50" r="' + R + '" fill="none" stroke-width="10" stroke-linecap="butt"' +
-            ' style="stroke:' + r.color + '" stroke-dasharray="' + C.toFixed(2) + '" stroke-dashoffset="' + (C * (1 - pct / 100)).toFixed(2) + '"' +
-            ' transform="rotate(-90 50 50)"/>' +
-          '<text class="pct" x="50" y="50" text-anchor="middle" dominant-baseline="central">' + pct + '%</text>' +
-        '</svg>' +
-        '<span class="ring-name">' + r.name + '</span>' +
-        '<span class="ring-count">' + r.done + ' / ' + r.planned + '</span>' +
-      '</div>';
-    }).join("");
+  function renderReminders() {
+    const today = keyOf(), list = state.reminders;
+    $("sample-notice").hidden = !list.some(r => r.sample);
+    const todays = list.filter(r => r.date === today).sort(byTime);
+    $("rem-today").innerHTML = todays.length ? todays.map(r => remHTML(r, false)).join("") : '<li class="empty muted">Nothing for today.</li>';
+    $("add-today").innerHTML = addArea("today");
+    const general = list.filter(r => !r.date).sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0));
+    $("rem-general").innerHTML = general.length ? general.map(r => remHTML(r, false)).join("") : '<li class="empty muted">No general reminders.</li>';
+    $("add-general").innerHTML = addArea("general");
+    renderRemCalendar();
   }
 
-  function rowHTML(item, st, isOther) {
-    const label = { done: "Done", now: "Now", missed: "Missed", later: "Later", skipped: "Skipped", other: "Not today" }[st];
-    const tags = [daysLabel(item), item.snoozed ? "Moved from " + fmt(state.items.find(i => i.id === item.id).time) : "",
-      st === "skipped" && state.skipped[keyOf()][item.id] ? "Skipped: " + state.skipped[keyOf()][item.id] : ""].filter(Boolean).join(" · ");
-    return '<tr class="' + (isOther ? "other" : st) + '" data-id="' + item.id + '">' +
-      '<td class="col-time">' + fmt(item.time) + (item.end ? '<span class="end">' + fmt(item.end) + '</span>' : "") + '</td>' +
-      '<td class="col-check"><button class="check" type="button" data-act="toggle" aria-pressed="' + (st === "done") + '"' +
-        (isOther || st === "skipped" ? " disabled" : "") + ' aria-label="' + (st === "done" ? "Mark not done: " : "Mark done: ") + esc(item.text) + '">' + CHECK + '</button></td>' +
-      '<td class="col-task"><button class="task-btn" type="button" data-act="edit" aria-expanded="' + (editingId === item.id) + '">' + esc(item.text) + '</button>' +
-        (item.note ? '<div class="note">' + esc(item.note) + '</div>' : "") +
-        (tags ? '<div class="tagline">' + esc(tags) + '</div>' : "") + '</td>' +
-      '<td class="col-status status-' + st + '">' + label +
-        (st === "missed" ? '<button class="snooze" type="button" data-act="snooze" aria-label="Move ' + esc(item.text) + ' one hour from now">+1 hr</button>' : "") + '</td>' +
-      '<td class="col-remove"><button class="remove" type="button" data-act="remove" aria-label="Remove ' + esc(item.text) + '">' + CROSS + '</button></td>' +
-    '</tr>' + (editingId === item.id ? editorHTML(item, isOther) : "");
-  }
-
-  function chipsHTML(days, once) {
-    return '<div class="chips" role="group" aria-label="Repeat on">' +
-      DAY_LETTERS.map((d, i) => '<button type="button" class="chip" data-day="' + i + '" aria-label="' + DAY_NAMES[i] +
-        '" aria-pressed="' + (!once && days.includes(i)) + '">' + d + '</button>').join("") +
-      '<button type="button" class="chip wide" data-once aria-pressed="' + !!once + '">Only today</button></div>';
-  }
-  function readChips(root) {
-    const once = root.querySelector("[data-once]").getAttribute("aria-pressed") === "true";
-    const days = [...root.querySelectorAll("[data-day]")].filter(b => b.getAttribute("aria-pressed") === "true").map(b => +b.dataset.day);
-    return { once, days: days.length ? days : ALL_DAYS };
-  }
-  function onChipClick(e) {
-    const b = e.target.closest(".chip"); if (!b) return;
-    const root = b.closest(".chips");
-    const on = b.getAttribute("aria-pressed") !== "true";
-    b.setAttribute("aria-pressed", on);
-    if (b.hasAttribute("data-once")) root.querySelectorAll("[data-day]").forEach(x => x.setAttribute("aria-pressed", !on));
-    else root.querySelector("[data-once]").setAttribute("aria-pressed", "false");
-  }
-  function applyChips(item, root) {
-    const { once, days } = readChips(root);
-    delete item.days; delete item.date;
-    if (once) item.date = keyOf();
-    else if (days.length < 7) item.days = days;
-  }
-
-  function recordFor(id) {
-    let planned = 0, done = 0;
-    for (const k of datesBack(30)) {
-      const info = dayInfo(k);
-      if (!info.ids || !info.ids.includes(id)) continue;
-      planned++; if (info.doneSet.has(id)) done++;
-    }
-    return planned ? "Done " + done + " of " + planned + " days it was scheduled in the last 30 days." : "No history yet for this task.";
-  }
-
-  function editorHTML(item, isOther) {
-    const base = state.items.find(i => i.id === item.id);
-    const skippedToday = (state.skipped[keyOf()] || {})[item.id] !== undefined;
-    return '<tr class="editor"><td colspan="5"><form class="edit" id="edit-form" autocomplete="off">' +
-      '<div class="fields">' +
-        '<label>Start<input type="time" id="ed-time" required value="' + base.time + '"></label>' +
-        '<label>End<input type="time" id="ed-end" value="' + (base.end || "") + '"></label>' +
-        '<label class="grow">Task<input type="text" id="ed-text" required maxlength="140" value="' + esc(base.text) + '"></label>' +
-      '</div>' +
-      '<label>Note<input type="text" id="ed-note" maxlength="200" value="' + esc(base.note || "") + '"></label>' +
-      chipsHTML(base.days || ALL_DAYS, !!base.date) +
-      '<p class="record">' + esc(recordFor(item.id)) + '</p>' +
-      '<div class="actions">' +
-        '<button class="btn" type="submit">Save</button>' +
-        '<button class="btn ghost" type="button" data-act="cancel">Cancel</button>' +
-        '<span class="spacer"></span>' +
-        (isOther ? "" : skippedToday
-          ? '<button class="btn ghost" type="button" data-act="unskip">Undo skip</button>'
-          : '<button class="btn ghost" type="button" data-act="skip">Skip today</button>') +
-        '<button class="btn ghost" type="button" data-act="delete">' + (deleteArmed ? "Tap again to delete" : "Delete") + '</button>' +
-      '</div>' +
-      '<div class="actions" id="skip-row" hidden>' +
-        '<input type="text" id="ed-reason" placeholder="Reason (optional)" maxlength="80" style="flex:1 1 180px">' +
-        '<button class="btn ghost" type="button" data-act="skip-confirm">Skip today</button>' +
-      '</div>' +
-    '</form></td></tr>';
-  }
-
-  function renderList() {
-    const k = keyOf(), nowMin = nowMinutes();
-    const done = new Set(state.done[k] || []), skipped = state.skipped[k] || {};
-    const rows = todayRows();
-    const statuses = rows.map((r, i) => statusFor(r, i, rows, nowMin, done, skipped));
-    let html = "", lastSec = "";
-    rows.forEach((r, i) => {
-      const sec = sectionOf(r.time);
-      if (sec !== lastSec) { html += '<tr class="sec"><td colspan="5">' + sec + '</td></tr>'; lastSec = sec; }
-      html += rowHTML(r, statuses[i], false);
-    });
-    if (!rows.length) html = '<tr><td colspan="5" class="empty">Nothing scheduled today. Add a task below or start from a template.</td></tr>';
-
-    const others = state.items.filter(i => !scheduledOn(i, k)).sort((a, b) => toMin(a.time) - toMin(b.time));
-    if (showOther && others.length) {
-      html += '<tr class="sec"><td colspan="5">Other days</td></tr>';
-      others.forEach(o => { html += rowHTML(o, "other", true); });
-    }
-    $("list").innerHTML = html;
-    $("toggle-other").hidden = !others.length;
-    $("toggle-other").textContent = showOther ? "Hide tasks for other days" : "Show tasks for other days (" + others.length + ")";
-
-    // end-of-day summary once nothing is left to come
-    const left = statuses.filter(s => s === "now" || s === "later").length;
-    const wrap = $("wrap-up");
-    wrap.hidden = !rows.length || left > 0;
-    if (!wrap.hidden) {
-      const c = s => statuses.filter(x => x === s).length;
-      wrap.textContent = "Today is wrapped up: " + c("done") + " done, " + c("missed") + " missed" + (c("skipped") ? ", " + c("skipped") + " skipped." : ".");
-    }
-
-    const form = $("edit-form");
-    if (form) {
-      form.querySelector(".chips").addEventListener("click", onChipClick);
-      form.addEventListener("submit", e => { e.preventDefault(); saveEdit(form); });
-    }
-  }
-
-  function renderCalendar() {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const first = new Date(today.getFullYear(), today.getMonth(), 1);
-    const n = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-    $("cal-title").textContent = today.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-    let html = '<div class="day blank"></div>'.repeat(first.getDay());
+  function renderRemCalendar() {
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    if (!calMonth) calMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const y = calMonth.getFullYear(), m = calMonth.getMonth(), n = new Date(y, m + 1, 0).getDate();
+    $("cal-title").textContent = calMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    const count = {};
+    for (const r of state.reminders) if (r.date && !r.done) count[r.date] = (count[r.date] || 0) + 1;
+    let html = '<div class="day blank"></div>'.repeat(new Date(y, m, 1).getDay());
     for (let d = 1; d <= n; d++) {
-      const date = new Date(today.getFullYear(), today.getMonth(), d), k = keyOf(date);
-      let cls = "day", label = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-      if (date > today) { cls += " future"; label += ": not yet"; }
-      else {
-        const info = dayInfo(k);
-        if (info.planned) {
-          const p = info.done / info.planned;
-          cls += " lv" + (p >= 1 ? 4 : p > .66 ? 3 : p > .33 ? 2 : p > 0 ? 1 : 0);
-          label += ": " + info.done + " of " + info.planned + " done";
-        } else label += ": no tasks";
-      }
-      if (+date === +today) cls += " today";
-      html += '<div class="' + cls + '" title="' + label + '" role="img" aria-label="' + label + '">' + d + '</div>';
+      const date = new Date(y, m, d), k = keyOf(date), c = count[k] || 0;
+      const cls = "day" + (date < now ? " past" : "") + (k === keyOf(now) ? " is-today" : "") + (k === selDate ? " selected" : "");
+      html += '<button type="button" class="' + cls + '" data-day="' + k + '" aria-label="' + date.toLocaleDateString(undefined, { month: "long", day: "numeric" }) +
+        (c ? ", " + c + (c === 1 ? " reminder" : " reminders") : "") + '"><span>' + d + '</span><span class="dots">' + (c ? (c > 3 ? c : "•".repeat(c)) : "") + '</span></button>';
     }
     $("cal").innerHTML = html;
+    // the tapped day's reminders, under the calendar (today's are already at the top)
+    if (selDate && selDate !== keyOf()) {
+      const items = state.reminders.filter(r => r.date === selDate).sort(byTime);
+      $("day-panel").innerHTML = '<div class="day-panel"><h3>' + esc(longDate(selDate)) + '</h3><ul class="rems">' +
+        (items.length ? items.map(r => remHTML(r, false)).join("") : '<li class="empty muted">Nothing on this day yet.</li>') + '</ul>' + addArea("day") + '</div>';
+    } else $("day-panel").innerHTML = "";
   }
 
-  function renderPatterns() {
-    const tally = { Morning: [0, 0], Afternoon: [0, 0], Evening: [0, 0] };
-    for (const k of datesBack(30)) {
-      if (k === keyOf()) continue;
-      const info = dayInfo(k);
-      if (!info.ids) continue;
-      for (const id of info.ids) {
-        const item = state.items.find(i => i.id === id); if (!item) continue;
-        const t = tally[sectionOf(item.time)]; t[1]++; if (info.doneSet.has(id)) t[0]++;
-      }
+  $("cal-prev").onclick = () => { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1); renderRemCalendar(); };
+  $("cal-next").onclick = () => { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1); renderRemCalendar(); };
+  $("page-reminders").addEventListener("click", e => {
+    const day = e.target.closest("[data-day]");
+    if (day) {
+      const k = day.dataset.day;
+      if (k === keyOf()) { selDate = null; remAdd = "today"; renderReminders(); $("rf-text-today")?.focus(); return; }
+      selDate = selDate === k ? null : k; remAdd = selDate ? remAdd : null; renderRemCalendar(); return;
     }
-    const rows = Object.entries(tally).filter(([, t]) => t[1]);
-    if (!rows.length) { $("patterns").innerHTML = '<p class="muted">This fills in after you use the app for a day or two.</p>'; return; }
-    $("patterns").innerHTML = rows.map(([name, [d, p]]) => {
-      const pct = Math.round(d / p * 100);
-      return '<div class="pat" role="img" aria-label="' + name + ': ' + pct + ' percent done"><span>' + name + '</span><div class="pbar"><i style="width:' + pct + '%"></i></div><span class="pv">' + pct + '%</span></div>';
-    }).join("");
-  }
-
-  // ---- actions
-  $("list").addEventListener("click", e => {
-    const b = e.target.closest("[data-act]"); if (!b) return;
-    const row = b.closest("tr[data-id]") || b.closest("tr.editor")?.previousElementSibling;
-    const id = row && row.dataset.id; if (!id) return;
-    const k = keyOf(), act = b.dataset.act;
-    if (act === "toggle") {
-      const set = new Set(state.done[k] || []);
-      set.has(id) ? set.delete(id) : set.add(id);
-      state.done[k] = [...set]; commit();
-    } else if (act === "edit") {
-      editingId = editingId === id ? null : id; deleteArmed = false; render();
-      if (editingId) $("ed-text")?.focus();
-    } else if (act === "cancel") { editingId = null; deleteArmed = false; render(); }
-    else if (act === "remove") removeItem(id);
-    else if (act === "delete") {
-      if (!deleteArmed) { deleteArmed = true; b.textContent = "Tap again to delete"; return; }
-      removeItem(id);
-    } else if (act === "snooze") {
-      const item = state.items.find(i => i.id === id);
-      const eff = effective(item);
-      const start = Math.min(Math.ceil((nowMinutes() + 60) / 5) * 5, 23 * 60 + 55);
-      const s = { time: toHHMM(start) };
-      if (eff.end) s.end = toHHMM(Math.min(start + Math.max(5, toMin(eff.end) - toMin(eff.time)), 23 * 60 + 59));
-      (state.snoozed[k] = state.snoozed[k] || {})[id] = s; commit();
-    } else if (act === "skip") { $("skip-row").hidden = false; $("ed-reason").focus(); }
-    else if (act === "skip-confirm") {
-      (state.skipped[k] = state.skipped[k] || {})[id] = $("ed-reason").value.trim();
-      editingId = null; commit();
-    } else if (act === "unskip") {
-      delete (state.skipped[k] || {})[id]; editingId = null; commit();
-    }
+    const add = e.target.closest("[data-radd]");
+    if (add) { remAdd = add.dataset.radd; remEditId = null; renderReminders(); $("rf-text-" + remAdd)?.focus(); return; }
+    if (e.target.closest("[data-rclose]")) { remAdd = null; remEditId = null; document.activeElement?.blur(); renderReminders(); return; }
+    const b = e.target.closest("[data-ract2]"); if (!b) return;
+    const r = state.reminders.find(x => x.id === b.closest("[data-rid]").dataset.rid); if (!r) return;
+    const act = b.dataset.ract2;
+    if (act === "done") { r.done = !r.done; commit(); }
+    else if (act === "edit") { remEditId = remEditId === r.id ? null : r.id; remAdd = null; renderReminders(); }
+    else if (act === "delete") { state.reminders = state.reminders.filter(x => x.id !== r.id); commit(); }
   });
-
-  function saveEdit(form) {
-    const item = state.items.find(i => i.id === editingId); if (!item) return;
-    const text = $("ed-text").value.trim(); if (!text) return;
-    item.time = $("ed-time").value || item.time;
-    item.text = text;
-    const end = $("ed-end").value; if (end && toMin(end) > toMin(item.time)) item.end = end; else delete item.end;
-    const note = $("ed-note").value.trim(); if (note) item.note = note; else delete item.note;
-    applyChips(item, form.querySelector(".chips"));
-    delete item.sample;
-    if (state.snoozed[keyOf()]) delete state.snoozed[keyOf()][item.id];
-    editingId = null; commit();
-  }
-
-  function removeItem(id) {
-    state.items = state.items.filter(i => i.id !== id);
-    if (editingId === id) editingId = null;
-    deleteArmed = false;
-    commit();
-  }
-
-  $("new-days").innerHTML = chipsHTML(ALL_DAYS, false);
-  $("new-days").addEventListener("click", onChipClick);
-  $("toggle-options").onclick = () => {
-    const open = $("add-more").hidden;
-    $("add-more").hidden = !open;
-    $("toggle-options").setAttribute("aria-expanded", open);
-    $("toggle-options").textContent = open ? "Hide options" : "Options";
-  };
-  $("toggle-other").onclick = () => { showOther = !showOther; render(); };
-
-  $("add-form").addEventListener("submit", e => {
+  $("page-reminders").addEventListener("submit", e => {
+    const f = e.target.closest("form[data-rscope]"); if (!f) return;
     e.preventDefault();
-    const time = $("new-time").value, text = $("new-text").value.trim();
-    if (!time || !text) return;
-    const item = { id: uid(), time, text };
-    const end = $("new-end").value; if (end && toMin(end) > toMin(time)) item.end = end;
-    const note = $("new-note").value.trim(); if (note) item.note = note;
-    applyChips(item, $("new-days").querySelector(".chips"));
-    state.items.push(item);
-    $("new-text").value = ""; $("new-end").value = ""; $("new-note").value = "";
-    $("new-days").innerHTML = chipsHTML(ALL_DAYS, false);
-    document.activeElement?.blur();  // close the keyboard
-    commit();
+    const scope = f.dataset.rscope, v = id => { const el = $("rf-" + id + "-" + scope); return el ? el.value : ""; };
+    const text = v("text").trim(); if (!text) return;
+    const r = scope === "edit" ? state.reminders.find(x => x.id === remEditId) : { id: uid() };
+    if (!r) return;
+    r.text = text; delete r.sample;
+    const date = scope === "general" ? "" : v("date"), time = v("time");
+    if (date) r.date = date; else delete r.date;
+    if (time && date) r.time = time; else delete r.time;
+    if (scope !== "edit") state.reminders.push(r);
+    remAdd = null; remEditId = null; document.activeElement?.blur(); commit();
   });
-
-  $("templates").innerHTML = TEMPLATES.map((t, i) =>
-    '<button type="button" class="btn ghost" data-tpl="' + i + '">' + t.name + ' <span>' + t.tasks.length + ' tasks · ' +
-    (t.days.length === 2 ? "Weekends" : "Mon–Fri") + '</span></button>').join("");
-  $("templates").addEventListener("click", e => {
-    const b = e.target.closest("[data-tpl]"); if (!b) return;
-    const t = TEMPLATES[+b.dataset.tpl];
-    t.tasks.forEach(([time, text]) => state.items.push({ id: uid(), time, text, days: [...t.days] }));
-    $("tpl-msg").hidden = false;
-    $("tpl-msg").textContent = "Added " + t.tasks.length + " tasks from " + t.name + ". Tap any task to change it.";
-    commit();
-  });
-
-  $("clear-samples").onclick = () => { state.items = state.items.filter(i => !i.sample); commit(); };
-  $("reset-day").onclick = () => { delete state.done[keyOf()]; commit(); };
+  $("clear-samples").onclick = () => { state.reminders = state.reminders.filter(r => !r.sample); commit(); };
 
   // ---- pages
-  const PAGES = ["checklist", "owe", "receipts"];
+  const PAGES = ["reminders", "owe", "receipts"];
   const pager = $("pager");
-  let currentPage = "checklist";
+  let currentPage = "reminders";
   function setCurrent(i) {
     const name = PAGES[i]; if (!name) return;
     PAGES.forEach((n, j) => $("tab-" + n).setAttribute("aria-selected", j === i));
@@ -1963,36 +1696,27 @@
   }
   function checkReminders() {
     const nowMin = nowMinutes(), k = keyOf();
-    const done = new Set(state.done[k] || []), skipped = state.skipped[k] || {};
-    const due = todayRows().filter(r => !done.has(r.id) && skipped[r.id] === undefined && toMin(r.time) > lastCheck && toMin(r.time) <= nowMin);
+    const due = state.reminders.filter(r => r.date === k && r.time && !r.done && toMin(r.time) > lastCheck && toMin(r.time) <= nowMin);
     lastCheck = nowMin;
     if (!due.length) return;
     const r = due[due.length - 1];
     bannerId = r.id;
-    $("banner-text").textContent = "It's " + fmt(r.time) + ". Time for: " + r.text;
+    $("banner-text").textContent = "It's " + fmt(r.time) + ". Reminder: " + r.text;
     $("banner").hidden = false;
     if (state.prefs.sound) beep();
   }
   $("banner-close").onclick = () => { $("banner").hidden = true; };
   $("banner-done").onclick = () => {
-    const k = keyOf(), set = new Set(state.done[k] || []);
-    if (bannerId) set.add(bannerId);
-    state.done[k] = [...set]; $("banner").hidden = true; commit();
+    const r = state.reminders.find(x => x.id === bannerId); if (r) r.done = true;
+    $("banner").hidden = true; commit();
   };
-
-  // Default the time picker to the next half hour
-  (() => { let m = nowMinutes(); m = Math.min(Math.ceil((m + 1) / 30) * 30, 23 * 60 + 30); $("new-time").value = toHHMM(m); })();
 
   // ---- saving: this device always, plus your account when opened as a Claude artifact
   let remote = null, saveTimer = null;
   function prune() {
-    const k = keyOf();
-    state.sched[k] = itemsFor(k).map(i => i.id);
-    for (const key of Object.keys(state.snoozed)) if (key !== k) delete state.snoozed[key];
-    for (const obj of [state.done, state.sched, state.skipped, state.totals]) {
-      const keys = Object.keys(obj).sort();
-      while (keys.length > 400) delete obj[keys.shift()];
-    }
+    // done reminders from more than 60 days ago drop off
+    const cutoff = keyOf(new Date(Date.now() - 60 * 86400000));
+    state.reminders = state.reminders.filter(r => !(r.done && r.date && r.date < cutoff));
   }
   function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {} }
   function commit() {
@@ -2006,7 +1730,7 @@
   }
 
   prune(); saveLocal(); renderSoundBtn(); render();
-  setInterval(() => { checkReminders(); if (!editingId && !oweEditId && !refundOpenId && !addAmtId && !invoiceId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
+  setInterval(() => { checkReminders(); if (!remEditId && !remAdd && !oweEditId && !refundOpenId && !addAmtId && !invoiceId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
 
   (async () => {
     if (!window.claude || !window.claude.use) return;
