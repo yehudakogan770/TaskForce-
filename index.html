@@ -1,0 +1,1493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily Checklist</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Checklist">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<style>
+  /* Layout: a ruled planner sheet — date block, rings, the day's schedule as a table, then month and patterns */
+  :root {
+    --c1: #000000;  /* ink */
+    --c2: #404040;  /* dark grey */
+    --c3: #8f8f8f;  /* mid grey */
+    --c4: #d9d9d9;  /* light grey */
+    --c5: #ffffff;  /* paper */
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: var(--font);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --c1: #ffffff; --c2: #c4c4c4; --c3: #7a7a7a; --c4: #2e2e2e; --c5: #000000; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --c1: #ffffff; --c2: #c4c4c4; --c3: #7a7a7a; --c4: #2e2e2e; --c5: #000000; color-scheme: dark; }
+
+  html { -webkit-text-size-adjust: 100%; }
+  * { box-sizing: border-box; border-radius: 0; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+  body {
+    background: var(--c5); color: var(--c1);
+    font-family: var(--font); font-size: 16px; line-height: 1.45;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    margin: 0;
+    padding-block: max(24px, env(safe-area-inset-top, 0px)) max(56px, env(safe-area-inset-bottom, 0px));
+  }
+  .app { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 36px; }
+
+  header { display: flex; flex-direction: column; gap: 4px; }
+  .head-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 28px; font-weight: 700; line-height: 1.2; }
+  .clock { font-size: 17px; color: var(--c3); font-variant-numeric: tabular-nums; }
+  .streak { font-size: 15px; color: var(--c2); }
+  .streak strong { color: var(--c1); font-variant-numeric: tabular-nums; }
+
+  h2 { margin: 0 0 12px; font-size: 20px; font-weight: 700; color: var(--c1); }
+  .muted { color: var(--c3); font-size: 14px; margin: 0; }
+
+  .banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px; background: var(--c1); color: var(--c5); }
+  .banner span { flex: 1 1 200px; font-weight: 500; }
+  .banner .btn { background: var(--c5); color: var(--c1); border-color: var(--c5); padding: 6px 14px; font-size: 14px; }
+  .banner .btn.ghost { background: transparent; color: var(--c5); border-color: var(--c3); }
+
+  .rings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .ring { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+  .ring svg { width: 100%; max-width: 120px; height: auto; display: block; }
+  .ring .track { stroke: var(--c4); }
+  .ring .arc { transition: stroke-dashoffset .4s ease; }
+  .ring .pct { font-family: var(--font); font-size: 20px; font-weight: 600; fill: var(--c1); }
+  .ring-name { font-size: 14px; font-weight: 600; }
+  .ring-count { font-size: 13px; color: var(--c3); font-variant-numeric: tabular-nums; }
+
+  .notice { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 12px; background: var(--c4); font-size: 14px; color: var(--c1); margin-bottom: 16px; }
+  .wrap-up { padding: 10px 12px; background: var(--c4); font-size: 14px; margin-bottom: 16px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 12px; font-weight: 500; color: var(--c3); padding: 0 0 8px; border-bottom: 2px solid var(--c1); }
+  td { padding: 12px 0; border-bottom: 1px solid var(--c4); vertical-align: middle; }
+  tr.sec td { padding: 18px 0 6px; font-size: 13px; font-weight: 600; color: var(--c3); border-bottom: 1px solid var(--c4); }
+  tr.sec:first-child td { padding-top: 0; }
+  tr.done td, tr.skipped td, tr.other td { color: var(--c3); }
+  tr.done .task-btn { text-decoration: line-through; color: var(--c3); }
+  tr.skipped .task-btn, tr.other .task-btn { color: var(--c3); }
+  tr.now td { background: var(--c4); }
+  tr.now td:first-child { padding-left: 8px; }
+  tr.now td:last-child { padding-right: 8px; }
+  .col-time { width: 76px; font-size: 15px; color: var(--c2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .col-time .end { display: block; font-size: 12px; color: var(--c3); }
+  .col-check { width: 40px; }
+  .col-status { width: 76px; font-size: 14px; text-align: right; white-space: nowrap; }
+  .col-remove { width: 36px; text-align: right; }
+  .col-task { overflow-wrap: anywhere; }
+  .task-btn { font: inherit; color: var(--c1); background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
+  .task-btn:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .note { font-size: 13px; color: var(--c2); }
+  .tagline { font-size: 12px; color: var(--c3); }
+
+  .check { width: 22px; height: 22px; border: 2px solid var(--c1); background: var(--c5); padding: 0; cursor: pointer;
+    display: grid; place-items: center; color: var(--c5); }
+  .check svg { width: 14px; height: 14px; opacity: 0; }
+  tr.done .check { background: var(--c3); border-color: var(--c3); }
+  tr.done .check svg { opacity: 1; }
+  tr.skipped .check, tr.other .check { border-color: var(--c4); cursor: default; }
+
+  .status-now { font-weight: 600; color: var(--c1); }
+  .status-missed { color: var(--c1); font-weight: 600; }
+  .status-later, .status-done, .status-skipped, .status-other { color: var(--c3); }
+  .snooze { display: block; margin: 4px 0 0 auto; font: inherit; font-size: 12px; color: var(--c1); background: var(--c5);
+    border: 1px solid var(--c1); padding: 1px 6px; cursor: pointer; }
+  .snooze:hover { background: var(--c4); }
+
+  .remove { border: 0; background: transparent; color: var(--c3); cursor: pointer; width: 28px; height: 28px; padding: 0;
+    display: inline-grid; place-items: center; }
+  .remove:hover { color: var(--c1); background: var(--c4); }
+  .remove svg { width: 14px; height: 14px; }
+
+  .empty { padding: 28px 0; color: var(--c3); text-align: center; }
+  .linkish { font: inherit; font-size: 14px; color: var(--c2); background: none; border: 0; padding: 0; cursor: pointer;
+    text-decoration: underline; text-underline-offset: 3px; }
+
+  /* editor */
+  tr.editor td { background: var(--c5); border-bottom: 2px solid var(--c1); padding: 14px 0 16px; }
+  .edit { display: flex; flex-direction: column; gap: 12px; }
+  .fields { display: flex; gap: 8px; flex-wrap: wrap; }
+  .fields label, .edit > label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--c3); min-width: 0; }
+  .fields .grow { flex: 1 1 200px; }
+  .record { font-size: 13px; color: var(--c2); margin: 0; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .actions .spacer { flex: 1; }
+
+  input[type="text"], input[type="time"] { font: inherit; color: var(--c1); background: var(--c5); border: 1px solid var(--c3);
+    padding: 10px 12px; outline: none; min-width: 0; }
+  input[type="time"] { font-size: 15px; }
+  input:focus { border-color: var(--c1); box-shadow: inset 0 0 0 1px var(--c1); }
+
+  .chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .chip { font: inherit; font-size: 13px; font-weight: 500; width: 34px; height: 34px; padding: 0; cursor: pointer;
+    border: 1px solid var(--c3); background: var(--c5); color: var(--c2); }
+  .chip.wide { width: auto; padding: 0 12px; margin-left: 8px; }
+  .chip[aria-pressed="true"] { background: var(--c1); border-color: var(--c1); color: var(--c5); }
+
+  form.add { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+  .add-row { display: grid; grid-template-columns: 150px 1fr auto; gap: 8px; }
+  .add-more { display: flex; flex-direction: column; gap: 10px; }
+  .add-more .fields label { flex: 0 0 150px; }
+  .btn { font: inherit; font-weight: 600; font-size: 15px; border: 2px solid var(--c1); padding: 9px 20px; cursor: pointer;
+    background: var(--c1); color: var(--c5); }
+  .btn:hover { background: var(--c2); border-color: var(--c2); }
+  .btn.ghost { background: var(--c5); color: var(--c1); border-width: 1px; padding: 6px 12px; font-size: 13px; font-weight: 500; }
+  .btn.ghost:hover { background: var(--c4); }
+
+  /* calendar */
+  .cal-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-head span { font-size: 11px; color: var(--c3); text-align: center; }
+  .day { aspect-ratio: 1; max-width: 100%; display: flex; align-items: flex-start; justify-content: flex-start; padding: 4px 5px;
+    font-size: 12px; border: 1px solid var(--c4); color: var(--c2); font-variant-numeric: tabular-nums; }
+  .day.blank { border: 0; }
+  .day.future { color: var(--c4); }
+  .day.lv0 { border-color: var(--c3); }
+  .day.lv1 { background: var(--c4); border-color: var(--c4); }
+  .day.lv2 { background: var(--c3); border-color: var(--c3); color: var(--c5); }
+  .day.lv3 { background: var(--c2); border-color: var(--c2); color: var(--c5); }
+  .day.lv4 { background: var(--c1); border-color: var(--c1); color: var(--c5); }
+  .day.today { outline: 2px solid var(--c1); outline-offset: 2px; }
+  .legend { display: flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 12px; color: var(--c3); }
+  .legend i { width: 14px; height: 14px; border: 1px solid var(--c3); }
+  .legend i:nth-of-type(2) { background: var(--c4); border-color: var(--c4); }
+  .legend i:nth-of-type(3) { background: var(--c3); }
+  .legend i:nth-of-type(4) { background: var(--c2); border-color: var(--c2); }
+  .legend i:nth-of-type(5) { background: var(--c1); border-color: var(--c1); }
+
+  /* patterns */
+  .pats { display: flex; flex-direction: column; gap: 10px; }
+  .pat { display: grid; grid-template-columns: 90px 1fr 48px; gap: 12px; align-items: center; font-size: 14px; }
+  .pbar { height: 12px; background: var(--c4); }
+  .pbar i { display: block; height: 100%; background: var(--c1); }
+  .pv { font-size: 14px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  details.tpl summary { cursor: pointer; font-size: 16px; font-weight: 600; color: var(--c1); }
+  .tpl-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .tpl-list .btn { text-align: left; display: flex; justify-content: space-between; gap: 12px; }
+  .tpl-list .btn span { color: var(--c3); font-weight: 400; }
+
+  footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--c3);
+    border-top: 1px solid var(--c4); padding-top: 12px; }
+  footer .links { display: flex; gap: 16px; flex-wrap: wrap; }
+  footer button { font: inherit; color: var(--c2); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+  /* page tabs */
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--c1); }
+  .tab { font: inherit; font-size: 15px; font-weight: 600; padding: 10px; border: 0; background: var(--c5); color: var(--c1); cursor: pointer; }
+  .tab[aria-selected="true"] { background: var(--c1); color: var(--c5); }
+  .page { display: flex; flex-direction: column; gap: 36px; }
+
+  /* money I owe */
+  .owe-total { display: flex; flex-direction: column; gap: 2px; }
+  .owe-total .big { font-size: 40px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .owe-total .sub { font-size: 15px; color: var(--c2); }
+  .debt-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .debt-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--c2); min-width: 0; }
+  .debt-form .full { grid-column: 1 / -1; }
+  .debt-form .btn { grid-column: 1 / -1; justify-self: start; }
+  input[type="number"], input[type="date"] { font: inherit; color: var(--c1); background: var(--c5); border: 1px solid var(--c3);
+    padding: 10px 12px; outline: none; min-width: 0; width: 100%; }
+  .debt-form input[type="text"] { width: 100%; }
+  .debts { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--c4); }
+  .debt { display: grid; grid-template-columns: 34px 1fr auto 32px; gap: 10px; align-items: start; padding: 14px 0; border-bottom: 1px solid var(--c4); }
+  .debt .check { margin-top: 2px; }
+  .debt.paid .check { background: var(--c3); border-color: var(--c3); }
+  .debt.paid .check svg { opacity: 1; }
+  .debt-who { font: inherit; font-weight: 600; color: var(--c1); background: none; border: 0; padding: 0; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+  .debt-who:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .debt-what { font-size: 15px; color: var(--c2); overflow-wrap: anywhere; }
+  .debt-dates { font-size: 13px; color: var(--c3); }
+  .debt-amt { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .debt-due { display: block; font-size: 12px; font-weight: 600; text-align: right; margin-top: 4px; white-space: nowrap; }
+  .debt-due.overdue { background: var(--c1); color: var(--c5); padding: 1px 6px; }
+  .debt-due.soon { color: var(--c1); }
+  .debt-due.later { color: var(--c3); font-weight: 400; }
+  .debt.paid .debt-who, .debt.paid .debt-amt { color: var(--c3); text-decoration: line-through; }
+  .debt-edit { grid-column: 1 / -1; padding-top: 6px; }
+  .people { display: flex; flex-direction: column; }
+  .person { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--c4); font-size: 15px; }
+  .person span:last-child { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* receipts */
+  .drop { border: 1px dashed var(--c3); padding: 24px 16px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+  .drop.over { background: var(--c4); border-color: var(--c1); }
+  .drop p { margin: 0; font-size: 14px; color: var(--c2); }
+  .rc-status { font-size: 14px; color: var(--c1); margin: 10px 0 0; }
+  .rc-status.err { font-weight: 600; }
+  .rc-form { display: flex; flex-direction: column; gap: 14px; padding: 16px; border: 1px solid var(--c1); }
+  .rc-form h3 { margin: 0; font-size: 17px; }
+  .rc-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--c2); min-width: 0; }
+  .rc-form input { width: 100%; }
+  .rc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .rc-items { display: flex; flex-direction: column; gap: 6px; }
+  .rc-item { display: grid; grid-template-columns: 1fr 56px 96px 32px; gap: 6px; align-items: center; }
+  .rc-item-head { font-size: 12px; color: var(--c3); }
+  .rc-shot { max-width: 100%; max-height: 260px; object-fit: contain; border: 1px solid var(--c4); align-self: flex-start; }
+  .rc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .rc-stat { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; background: var(--c4); min-width: 0; }
+  .rc-stat span { font-size: 12px; color: var(--c2); }
+  .rc-stat strong { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .rc-stats-note { font-size: 12px; color: var(--c3); margin: 6px 0 0; }
+  .soon-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--c4); }
+  .soon { display: grid; grid-template-columns: 92px 1fr auto; gap: 12px; align-items: center; width: 100%; padding: 12px 0; font: inherit; color: var(--c1);
+    background: none; border: 0; border-bottom: 1px solid var(--c4); text-align: left; cursor: pointer; }
+  .soon:hover { background: var(--c4); }
+  .soon-days { font-size: 12px; font-weight: 600; padding: 2px 6px; text-align: center; border: 1px solid var(--c1); }
+  .soon-days.urgent { background: var(--c1); color: var(--c5); }
+  .soon-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .soon-sub { display: block; font-size: 13px; color: var(--c3); }
+  .soon-amt { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #rc-text { font: inherit; font-size: 14px; width: 100%; min-height: 72px; resize: vertical; color: var(--c1); background: var(--c5);
+    border: 1px solid var(--c3); padding: 10px 12px; outline: none; }
+  #rc-text:focus { border-color: var(--c1); box-shadow: inset 0 0 0 1px var(--c1); }
+  .receipts { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--c4); }
+  .receipt { border-bottom: 1px solid var(--c4); }
+  .receipt-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 14px 0; width: 100%; font: inherit; color: var(--c1);
+    background: none; border: 0; text-align: left; cursor: pointer; }
+  .receipt-store { font-weight: 600; overflow-wrap: anywhere; }
+  .receipt-sub { font-size: 13px; color: var(--c3); }
+  .receipt-amt { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .receipt-tax { display: block; font-size: 12px; font-weight: 400; color: var(--c3); }
+  .receipt.returned .receipt-store, .receipt.returned .receipt-amt { color: var(--c3); }
+  .rc-detail { display: flex; flex-direction: column; gap: 12px; padding: 0 0 16px; }
+  .rc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .rc-table td { padding: 6px 0; border-bottom: 1px solid var(--c4); vertical-align: top; }
+  .rc-table td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: 12px; }
+  .rc-table tr.sum td { border-bottom: 0; color: var(--c2); padding: 3px 0; }
+  .rc-table tr.total td { font-weight: 700; color: var(--c1); border-top: 2px solid var(--c1); padding-top: 8px; }
+  .rc-facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: 14px; margin: 0; }
+  .rc-facts dt { color: var(--c3); }
+  .rc-facts dd { margin: 0; overflow-wrap: anywhere; }
+
+  .money-cols { display: flex; flex-direction: column; gap: 56px; }
+  .money-col { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+  .money-col > h2.side-title { font-size: 24px; margin: 0; padding-bottom: 8px; border-bottom: 3px solid var(--c1); }
+  @media (orientation: landscape) and (min-width: 640px) {
+    .app { max-width: 1100px; }
+    .tabs, #page-checklist, #page-receipts { width: 100%; max-width: 600px; margin-inline: auto; }
+    /* left: owed to me, right: I owe */
+    .money-cols { flex-direction: row-reverse; gap: 40px; align-items: flex-start; }
+    .money-col { flex: 1 1 0; }
+  }
+
+  button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (max-width: 460px) {
+    h1 { font-size: 24px; }
+    .rings { gap: 8px; }
+    .ring { padding: 10px 4px; }
+    .ring .pct { font-size: 22px; }
+    .col-time { width: 62px; font-size: 13px; }
+    .col-status { width: 60px; font-size: 12px; }
+    .add-row { grid-template-columns: 1fr auto; }
+    #new-text { grid-column: 1 / -1; grid-row: 1; }
+    .chip.wide { margin-left: 0; }
+    .pat { grid-template-columns: 80px 1fr 44px; }
+    .debt-form { grid-template-columns: 1fr; }
+    .rc-item { grid-template-columns: 1fr 1fr 32px; }
+    .soon { grid-template-columns: 84px 1fr auto; gap: 10px; }
+    .rc-stat { padding: 8px; }
+    .rc-stat strong { font-size: 15px; }
+    .rc-item [data-f="name"] { grid-column: 1 / -1; }
+    .rc-item-head { display: none; }
+    .rc-item + .rc-item { border-top: 1px solid var(--c4); padding-top: 8px; }
+    .tab { font-size: 14px; padding: 10px 4px; }
+    .owe-total .big { font-size: 34px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="tabs" role="tablist" aria-label="Pages">
+    <button class="tab" type="button" role="tab" id="tab-checklist" aria-selected="true" aria-controls="page-checklist">Checklist</button>
+    <button class="tab" type="button" role="tab" id="tab-owe" aria-selected="false" aria-controls="page-owe">Money</button>
+    <button class="tab" type="button" role="tab" id="tab-receipts" aria-selected="false" aria-controls="page-receipts">Receipts</button>
+  </div>
+
+  <div class="page" id="page-checklist" role="tabpanel" aria-labelledby="tab-checklist">
+  <header>
+    <div class="head-row">
+      <h1 id="date-line">Today</h1>
+      <div class="clock" id="clock">--:--</div>
+    </div>
+    <div class="streak" id="streak"></div>
+  </header>
+
+  <div class="banner" id="banner" role="status" hidden>
+    <span id="banner-text"></span>
+    <button class="btn" type="button" id="banner-done">Done</button>
+    <button class="btn ghost" type="button" id="banner-close">Dismiss</button>
+  </div>
+
+  <section aria-labelledby="rings-title">
+    <h2 id="rings-title">Completed</h2>
+    <div class="rings" id="rings"></div>
+  </section>
+
+  <section aria-labelledby="list-title">
+    <h2 id="list-title">Schedule</h2>
+    <div class="notice" id="sample-notice" hidden>
+      <span>These are example tasks. Remove them and add your own.</span>
+      <button class="btn ghost" id="clear-samples" type="button">Clear examples</button>
+    </div>
+    <div class="wrap-up" id="wrap-up" hidden></div>
+    <table>
+      <tbody id="list"></tbody>
+    </table>
+    <p class="muted" style="margin-top:10px"><button type="button" class="linkish" id="toggle-other"></button></p>
+
+    <form class="add" id="add-form" autocomplete="off">
+      <div class="add-row">
+        <input type="time" id="new-time" aria-label="Start time" required>
+        <input type="text" id="new-text" placeholder="New task" aria-label="Task" maxlength="140" required>
+        <button class="btn" type="submit">Add</button>
+      </div>
+      <div><button type="button" class="linkish" id="toggle-options" aria-expanded="false">Options</button></div>
+      <div class="add-more" id="add-more" hidden>
+        <div class="fields">
+          <label>End time (optional)<input type="time" id="new-end"></label>
+          <label class="grow">Note (optional)<input type="text" id="new-note" maxlength="200"></label>
+        </div>
+        <div id="new-days"></div>
+      </div>
+    </form>
+  </section>
+
+  <section aria-labelledby="cal-title">
+    <h2 id="cal-title">This month</h2>
+    <div class="cal-wrap">
+      <div class="cal cal-head" aria-hidden="true"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+      <div class="cal" id="cal"></div>
+    </div>
+    <div class="legend" aria-hidden="true">0% <i></i><i></i><i></i><i></i><i></i> 100%</div>
+  </section>
+
+  <section aria-labelledby="pat-title">
+    <h2 id="pat-title">Time of day, last 30 days</h2>
+    <div class="pats" id="patterns"></div>
+  </section>
+
+  <details class="tpl">
+    <summary>Start from a template</summary>
+    <div class="tpl-list" id="templates"></div>
+    <p class="muted" id="tpl-msg" style="margin-top:8px" hidden></p>
+  </details>
+
+  <footer>
+    <span id="sync-status">Saved on this device</span>
+    <div class="links">
+      <button type="button" id="sound-toggle">Reminder sound: off</button>
+      <button type="button" id="reset-day">Uncheck all for today</button>
+    </div>
+  </footer>
+  </div>
+
+  <div class="page" id="page-owe" role="tabpanel" aria-labelledby="tab-owe" hidden>
+    <header>
+      <h1>Money</h1>
+    </header>
+
+    <div class="notice" id="debt-sample-notice" hidden>
+      <span>These are example entries. Remove them and add your own.</span>
+      <button class="btn ghost" id="clear-debt-samples" type="button">Clear examples</button>
+    </div>
+
+    <div class="money-cols">
+      <div class="money-col" id="col-owe"></div>
+      <div class="money-col" id="col-owed"></div>
+    </div>
+
+    <footer>
+      <span id="owe-sync-status">Saved on this device</span>
+    </footer>
+  </div>
+
+  <div class="page" id="page-receipts" role="tabpanel" aria-labelledby="tab-receipts" hidden>
+    <header>
+      <h1>Receipts</h1>
+    </header>
+
+    <section aria-label="Totals">
+      <div class="rc-stats">
+        <div class="rc-stat"><span>Items</span><strong id="rc-items-total">$0.00</strong></div>
+        <div class="rc-stat"><span>Tax</span><strong id="rc-tax-total">$0.00</strong></div>
+        <div class="rc-stat"><span>Total</span><strong id="rc-grand-total">$0.00</strong></div>
+      </div>
+      <p class="rc-stats-note" id="rc-stats-note">All saved receipts. Returned orders aren't counted.</p>
+    </section>
+
+    <section aria-labelledby="soon-title" id="soon-section">
+      <h2 id="soon-title">Return by</h2>
+      <ul class="soon-list" id="soon-list"></ul>
+    </section>
+
+    <div class="notice" id="rc-sample-notice" hidden>
+      <span>This is an example receipt. Remove it and add your own.</span>
+      <button class="btn ghost" id="clear-rc-samples" type="button">Clear example</button>
+    </div>
+
+    <section aria-labelledby="rc-add-title">
+      <h2 id="rc-add-title">Add a receipt</h2>
+      <div class="drop" id="rc-drop">
+        <p>Paste a screenshot or the copied text of an order anywhere on this page, or choose a screenshot. The details get filled in for you.</p>
+        <label class="btn" for="rc-file" style="cursor:pointer">Choose screenshot</label>
+        <input type="file" id="rc-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+        <textarea id="rc-text" aria-label="Order text" placeholder="Or paste the order text here"></textarea>
+        <button type="button" class="linkish" id="rc-manual">Or type it in yourself</button>
+      </div>
+      <p class="rc-status" id="rc-status" role="status" hidden></p>
+      <div id="rc-form-wrap" style="margin-top:16px"></div>
+    </section>
+
+    <section aria-labelledby="rc-list-title">
+      <h2 id="rc-list-title">Saved receipts</h2>
+      <ul class="receipts" id="receipts"></ul>
+    </section>
+
+    <footer>
+      <span id="rc-sync-status">Saved on this device</span>
+    </footer>
+  </div>
+</div>
+
+<script>
+(() => {
+  const LS_KEY = "daily-checklist-v1";
+  const CHECK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
+  const CROSS = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
+  const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
+  const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+
+  const uid = () => Math.random().toString(36).slice(2, 10);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const keyOf = (d = new Date()) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  const dateOf = k => new Date(k + "T00:00:00");
+  const toMin = t => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+  const toHHMM = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+  const fmt = t => {
+    const [h, m] = t.split(":").map(Number);
+    return ((h % 12) || 12) + ":" + String(m).padStart(2, "0") + (h >= 12 ? "pm" : "am");
+  };
+  const sectionOf = t => toMin(t) < 720 ? "Morning" : toMin(t) < 1020 ? "Afternoon" : "Evening";
+  const nowMinutes = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+
+  const mk = (time, text, extra = {}) => ({ id: uid(), time, text, ...extra });
+  const SAMPLE = [
+    ["07:00", "Wake up & drink water"], ["08:00", "Morning prayers", { end: "08:30" }], ["09:00", "Answer emails", { note: "Inbox to zero, then calendar" }],
+    ["12:30", "Lunch"], ["15:00", "Walk outside"], ["18:30", "Dinner with family"], ["22:00", "Lights out"]
+  ].map(([t, x, e]) => mk(t, x, { ...e, sample: true }));
+
+  const TEMPLATES = [
+    { name: "Work day", days: [1, 2, 3, 4, 5], tasks: [["07:00", "Wake up"], ["07:30", "Exercise"], ["09:00", "Start work"], ["12:30", "Lunch"], ["17:30", "Finish work"], ["19:00", "Dinner"], ["22:30", "Lights out"]] },
+    { name: "School day", days: [1, 2, 3, 4, 5], tasks: [["06:45", "Wake up"], ["07:30", "Leave for school"], ["15:30", "Homework"], ["18:00", "Dinner"], ["21:30", "Lights out"]] },
+    { name: "Day off", days: [0, 6], tasks: [["08:30", "Wake up"], ["10:00", "Walk outside"], ["13:00", "Lunch"], ["15:00", "Read"], ["19:00", "Dinner"], ["23:00", "Lights out"]] },
+  ];
+
+  // items: { id, time, end?, text, note?, days? (weekday numbers; missing = every day), date? (one day only) }
+  // done[date] = [ids]   sched[date] = [ids planned that day]   skipped[date] = { id: reason }
+  // snoozed[date] = { id: { time, end? } }   totals[date] = count (older saves only)
+  // debts: { id, who, amount, what, date (when it happened), due?, paid? (date paid) }
+  const daysAgo = n => { const d = new Date(); d.setDate(d.getDate() + n); return keyOf(d); };
+  const SAMPLE_DEBTS = [
+    { id: uid(), who: "Moshe", amount: 120, what: "Concert tickets", date: daysAgo(-12), due: daysAgo(-2), sample: true },
+    { id: uid(), who: "Sarah", amount: 45.5, what: "Groceries", date: daysAgo(-3), sample: true },
+    { id: uid(), who: "Landlord", amount: 1400, what: "November rent", date: daysAgo(-1), due: daysAgo(6), sample: true },
+    { id: uid(), who: "David", amount: 60, what: "Dinner I paid for", date: daysAgo(-4), due: daysAgo(10), dir: "owed", sample: true },
+    { id: uid(), who: "Rivka", amount: 25, what: "Gas money", date: daysAgo(-6), dir: "owed", sample: true },
+  ];
+  // receipts: { id, store, orderNumber, orderDate, returnBy?, payment, items: [{ name, qty, price }], subtotal, shipping, tax, total, returned? }
+  const SAMPLE_RECEIPTS = [{
+    id: uid(), store: "Amazon", orderNumber: "112-4839201-5560217", orderDate: daysAgo(-9), returnBy: daysAgo(21), payment: "Visa ending in 4421",
+    items: [{ name: "USB-C charging cable, 6 ft (2-pack)", qty: 1, price: 12.99 }, { name: "Spiral notebook, college ruled", qty: 3, price: 4.49 }],
+    subtotal: 26.46, shipping: 0, tax: 2.35, total: 28.81, sample: true,
+  }];
+  const blank = () => ({ items: SAMPLE, done: {}, sched: {}, skipped: {}, snoozed: {}, totals: {}, prefs: {}, debts: SAMPLE_DEBTS, receipts: SAMPLE_RECEIPTS });
+  const normalize = s => ({ ...blank(), ...s, items: Array.isArray(s.items) ? s.items : [] });
+  let state = blank();
+  try { const saved = JSON.parse(localStorage.getItem(LS_KEY)); if (saved && Array.isArray(saved.items)) state = normalize(saved); } catch {}
+
+  const $ = id => document.getElementById(id);
+  let editingId = null, showOther = false, deleteArmed = false;
+
+  // ---- schedule logic
+  function scheduledOn(item, k) {
+    if (item.date) return item.date === k;
+    return !item.days || item.days.includes(dateOf(k).getDay());
+  }
+  const itemsFor = k => state.items.filter(i => scheduledOn(i, k));
+  function effective(item) {
+    const s = (state.snoozed[keyOf()] || {})[item.id];
+    return s ? { ...item, time: s.time, end: s.end || null, snoozed: true } : item;
+  }
+  function todayRows() {
+    return itemsFor(keyOf()).map(effective).sort((a, b) => toMin(a.time) - toMin(b.time));
+  }
+  function statusFor(item, idx, rows, nowMin, done, skipped) {
+    if (done.has(item.id)) return "done";
+    if (skipped[item.id] !== undefined) return "skipped";
+    const start = toMin(item.time);
+    const next = rows.slice(idx + 1).find(r => toMin(r.time) > start);
+    const end = item.end ? toMin(item.end) : next ? toMin(next.time) : 24 * 60;
+    if (nowMin >= start && nowMin < end) return "now";
+    if (nowMin >= end) return "missed";
+    return "later";
+  }
+  function daysLabel(item) {
+    if (item.date) return "Only " + dateOf(item.date).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    if (!item.days || item.days.length === 7) return "";
+    const d = [...item.days].sort().join();
+    if (d === "1,2,3,4,5") return "Mon–Fri";
+    if (d === "0,6") return "Weekends";
+    return [...item.days].sort().map(i => DAY_NAMES[i]).join(", ");
+  }
+
+  // planned/done for one date
+  function dayInfo(k) {
+    const skipped = state.skipped[k] || {};
+    const doneSet = new Set(state.done[k] || []);
+    let ids;
+    if (k === keyOf()) ids = itemsFor(k).map(i => i.id);
+    else if (state.sched[k]) ids = state.sched[k];
+    else {
+      const planned = state.totals[k] || 0;
+      return { planned, done: Math.min(doneSet.size, planned), ids: null };
+    }
+    ids = ids.filter(id => skipped[id] === undefined);
+    return { planned: ids.length, done: ids.filter(id => doneSet.has(id)).length, ids, doneSet };
+  }
+  const datesBack = n => Array.from({ length: n }, (_, i) => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - i); return keyOf(d); });
+
+  // ---- render
+  function render() {
+    const now = new Date();
+    $("date-line").textContent = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    $("clock").textContent = fmt(toHHMM(nowMinutes()));
+    $("sample-notice").hidden = !state.items.some(i => i.sample);
+    renderStreak();
+    renderRings();
+    renderList();
+    renderCalendar();
+    renderPatterns();
+    renderOwe();
+    renderReceipts();
+  }
+
+  function renderStreak() {
+    let streak = 0;
+    for (const k of datesBack(400)) {
+      const info = dayInfo(k);
+      const full = info.planned > 0 && info.done >= info.planned;
+      if (k === keyOf()) { if (full) streak++; continue; }
+      if (!info.ids && !state.totals[k]) break;
+      if (info.planned === 0) continue;
+      if (!full) break;
+      streak++;
+    }
+    $("streak").innerHTML = streak
+      ? "Streak: <strong>" + streak + " day" + (streak === 1 ? "" : "s") + "</strong> with everything done"
+      : "Streak: <strong>0 days</strong>. Finish all of today's tasks to start one.";
+  }
+
+  function renderRings() {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const span = from => { const keys = []; const d = new Date(from); while (d <= today) { keys.push(keyOf(d)); d.setDate(d.getDate() + 1); } return keys; };
+    const sum = keys => keys.reduce((a, k) => { const i = dayInfo(k); return { done: a.done + i.done, planned: a.planned + i.planned }; }, { done: 0, planned: 0 });
+    const weekStart = new Date(today); weekStart.setDate(today.getDate() - today.getDay());
+    const rings = [
+      { name: "Today", color: "var(--c1)", ...sum([keyOf(today)]) },
+      { name: "This week", color: "var(--c2)", ...sum(span(weekStart)) },
+      { name: "This month", color: "var(--c3)", ...sum(span(new Date(today.getFullYear(), today.getMonth(), 1))) },
+    ];
+    const R = 40, C = 2 * Math.PI * R;
+    $("rings").innerHTML = rings.map(r => {
+      const pct = r.planned ? Math.min(100, Math.round(r.done / r.planned * 100)) : 0;
+      return '<div class="ring" role="img" aria-label="' + r.name + ': ' + r.done + ' of ' + r.planned + ' done, ' + pct + ' percent">' +
+        '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+          '<circle class="track" cx="50" cy="50" r="' + R + '" fill="none" stroke-width="10"/>' +
+          '<circle class="arc" cx="50" cy="50" r="' + R + '" fill="none" stroke-width="10" stroke-linecap="butt"' +
+            ' style="stroke:' + r.color + '" stroke-dasharray="' + C.toFixed(2) + '" stroke-dashoffset="' + (C * (1 - pct / 100)).toFixed(2) + '"' +
+            ' transform="rotate(-90 50 50)"/>' +
+          '<text class="pct" x="50" y="50" text-anchor="middle" dominant-baseline="central">' + pct + '%</text>' +
+        '</svg>' +
+        '<span class="ring-name">' + r.name + '</span>' +
+        '<span class="ring-count">' + r.done + ' / ' + r.planned + '</span>' +
+      '</div>';
+    }).join("");
+  }
+
+  function rowHTML(item, st, isOther) {
+    const label = { done: "Done", now: "Now", missed: "Missed", later: "Later", skipped: "Skipped", other: "Not today" }[st];
+    const tags = [daysLabel(item), item.snoozed ? "Moved from " + fmt(state.items.find(i => i.id === item.id).time) : "",
+      st === "skipped" && state.skipped[keyOf()][item.id] ? "Skipped: " + state.skipped[keyOf()][item.id] : ""].filter(Boolean).join(" · ");
+    return '<tr class="' + (isOther ? "other" : st) + '" data-id="' + item.id + '">' +
+      '<td class="col-time">' + fmt(item.time) + (item.end ? '<span class="end">' + fmt(item.end) + '</span>' : "") + '</td>' +
+      '<td class="col-check"><button class="check" type="button" data-act="toggle" aria-pressed="' + (st === "done") + '"' +
+        (isOther || st === "skipped" ? " disabled" : "") + ' aria-label="' + (st === "done" ? "Mark not done: " : "Mark done: ") + esc(item.text) + '">' + CHECK + '</button></td>' +
+      '<td class="col-task"><button class="task-btn" type="button" data-act="edit" aria-expanded="' + (editingId === item.id) + '">' + esc(item.text) + '</button>' +
+        (item.note ? '<div class="note">' + esc(item.note) + '</div>' : "") +
+        (tags ? '<div class="tagline">' + esc(tags) + '</div>' : "") + '</td>' +
+      '<td class="col-status status-' + st + '">' + label +
+        (st === "missed" ? '<button class="snooze" type="button" data-act="snooze" aria-label="Move ' + esc(item.text) + ' one hour from now">+1 hr</button>' : "") + '</td>' +
+      '<td class="col-remove"><button class="remove" type="button" data-act="remove" aria-label="Remove ' + esc(item.text) + '">' + CROSS + '</button></td>' +
+    '</tr>' + (editingId === item.id ? editorHTML(item, isOther) : "");
+  }
+
+  function chipsHTML(days, once) {
+    return '<div class="chips" role="group" aria-label="Repeat on">' +
+      DAY_LETTERS.map((d, i) => '<button type="button" class="chip" data-day="' + i + '" aria-label="' + DAY_NAMES[i] +
+        '" aria-pressed="' + (!once && days.includes(i)) + '">' + d + '</button>').join("") +
+      '<button type="button" class="chip wide" data-once aria-pressed="' + !!once + '">Only today</button></div>';
+  }
+  function readChips(root) {
+    const once = root.querySelector("[data-once]").getAttribute("aria-pressed") === "true";
+    const days = [...root.querySelectorAll("[data-day]")].filter(b => b.getAttribute("aria-pressed") === "true").map(b => +b.dataset.day);
+    return { once, days: days.length ? days : ALL_DAYS };
+  }
+  function onChipClick(e) {
+    const b = e.target.closest(".chip"); if (!b) return;
+    const root = b.closest(".chips");
+    const on = b.getAttribute("aria-pressed") !== "true";
+    b.setAttribute("aria-pressed", on);
+    if (b.hasAttribute("data-once")) root.querySelectorAll("[data-day]").forEach(x => x.setAttribute("aria-pressed", !on));
+    else root.querySelector("[data-once]").setAttribute("aria-pressed", "false");
+  }
+  function applyChips(item, root) {
+    const { once, days } = readChips(root);
+    delete item.days; delete item.date;
+    if (once) item.date = keyOf();
+    else if (days.length < 7) item.days = days;
+  }
+
+  function recordFor(id) {
+    let planned = 0, done = 0;
+    for (const k of datesBack(30)) {
+      const info = dayInfo(k);
+      if (!info.ids || !info.ids.includes(id)) continue;
+      planned++; if (info.doneSet.has(id)) done++;
+    }
+    return planned ? "Done " + done + " of " + planned + " days it was scheduled in the last 30 days." : "No history yet for this task.";
+  }
+
+  function editorHTML(item, isOther) {
+    const base = state.items.find(i => i.id === item.id);
+    const skippedToday = (state.skipped[keyOf()] || {})[item.id] !== undefined;
+    return '<tr class="editor"><td colspan="5"><form class="edit" id="edit-form" autocomplete="off">' +
+      '<div class="fields">' +
+        '<label>Start<input type="time" id="ed-time" required value="' + base.time + '"></label>' +
+        '<label>End<input type="time" id="ed-end" value="' + (base.end || "") + '"></label>' +
+        '<label class="grow">Task<input type="text" id="ed-text" required maxlength="140" value="' + esc(base.text) + '"></label>' +
+      '</div>' +
+      '<label>Note<input type="text" id="ed-note" maxlength="200" value="' + esc(base.note || "") + '"></label>' +
+      chipsHTML(base.days || ALL_DAYS, !!base.date) +
+      '<p class="record">' + esc(recordFor(item.id)) + '</p>' +
+      '<div class="actions">' +
+        '<button class="btn" type="submit">Save</button>' +
+        '<button class="btn ghost" type="button" data-act="cancel">Cancel</button>' +
+        '<span class="spacer"></span>' +
+        (isOther ? "" : skippedToday
+          ? '<button class="btn ghost" type="button" data-act="unskip">Undo skip</button>'
+          : '<button class="btn ghost" type="button" data-act="skip">Skip today</button>') +
+        '<button class="btn ghost" type="button" data-act="delete">' + (deleteArmed ? "Tap again to delete" : "Delete") + '</button>' +
+      '</div>' +
+      '<div class="actions" id="skip-row" hidden>' +
+        '<input type="text" id="ed-reason" placeholder="Reason (optional)" maxlength="80" style="flex:1 1 180px">' +
+        '<button class="btn ghost" type="button" data-act="skip-confirm">Skip today</button>' +
+      '</div>' +
+    '</form></td></tr>';
+  }
+
+  function renderList() {
+    const k = keyOf(), nowMin = nowMinutes();
+    const done = new Set(state.done[k] || []), skipped = state.skipped[k] || {};
+    const rows = todayRows();
+    const statuses = rows.map((r, i) => statusFor(r, i, rows, nowMin, done, skipped));
+    let html = "", lastSec = "";
+    rows.forEach((r, i) => {
+      const sec = sectionOf(r.time);
+      if (sec !== lastSec) { html += '<tr class="sec"><td colspan="5">' + sec + '</td></tr>'; lastSec = sec; }
+      html += rowHTML(r, statuses[i], false);
+    });
+    if (!rows.length) html = '<tr><td colspan="5" class="empty">Nothing scheduled today. Add a task below or start from a template.</td></tr>';
+
+    const others = state.items.filter(i => !scheduledOn(i, k)).sort((a, b) => toMin(a.time) - toMin(b.time));
+    if (showOther && others.length) {
+      html += '<tr class="sec"><td colspan="5">Other days</td></tr>';
+      others.forEach(o => { html += rowHTML(o, "other", true); });
+    }
+    $("list").innerHTML = html;
+    $("toggle-other").hidden = !others.length;
+    $("toggle-other").textContent = showOther ? "Hide tasks for other days" : "Show tasks for other days (" + others.length + ")";
+
+    // end-of-day summary once nothing is left to come
+    const left = statuses.filter(s => s === "now" || s === "later").length;
+    const wrap = $("wrap-up");
+    wrap.hidden = !rows.length || left > 0;
+    if (!wrap.hidden) {
+      const c = s => statuses.filter(x => x === s).length;
+      wrap.textContent = "Today is wrapped up: " + c("done") + " done, " + c("missed") + " missed" + (c("skipped") ? ", " + c("skipped") + " skipped." : ".");
+    }
+
+    const form = $("edit-form");
+    if (form) {
+      form.querySelector(".chips").addEventListener("click", onChipClick);
+      form.addEventListener("submit", e => { e.preventDefault(); saveEdit(form); });
+    }
+  }
+
+  function renderCalendar() {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const first = new Date(today.getFullYear(), today.getMonth(), 1);
+    const n = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    $("cal-title").textContent = today.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    let html = '<div class="day blank"></div>'.repeat(first.getDay());
+    for (let d = 1; d <= n; d++) {
+      const date = new Date(today.getFullYear(), today.getMonth(), d), k = keyOf(date);
+      let cls = "day", label = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      if (date > today) { cls += " future"; label += ": not yet"; }
+      else {
+        const info = dayInfo(k);
+        if (info.planned) {
+          const p = info.done / info.planned;
+          cls += " lv" + (p >= 1 ? 4 : p > .66 ? 3 : p > .33 ? 2 : p > 0 ? 1 : 0);
+          label += ": " + info.done + " of " + info.planned + " done";
+        } else label += ": no tasks";
+      }
+      if (+date === +today) cls += " today";
+      html += '<div class="' + cls + '" title="' + label + '" role="img" aria-label="' + label + '">' + d + '</div>';
+    }
+    $("cal").innerHTML = html;
+  }
+
+  function renderPatterns() {
+    const tally = { Morning: [0, 0], Afternoon: [0, 0], Evening: [0, 0] };
+    for (const k of datesBack(30)) {
+      if (k === keyOf()) continue;
+      const info = dayInfo(k);
+      if (!info.ids) continue;
+      for (const id of info.ids) {
+        const item = state.items.find(i => i.id === id); if (!item) continue;
+        const t = tally[sectionOf(item.time)]; t[1]++; if (info.doneSet.has(id)) t[0]++;
+      }
+    }
+    const rows = Object.entries(tally).filter(([, t]) => t[1]);
+    if (!rows.length) { $("patterns").innerHTML = '<p class="muted">This fills in after you use the app for a day or two.</p>'; return; }
+    $("patterns").innerHTML = rows.map(([name, [d, p]]) => {
+      const pct = Math.round(d / p * 100);
+      return '<div class="pat" role="img" aria-label="' + name + ': ' + pct + ' percent done"><span>' + name + '</span><div class="pbar"><i style="width:' + pct + '%"></i></div><span class="pv">' + pct + '%</span></div>';
+    }).join("");
+  }
+
+  // ---- actions
+  $("list").addEventListener("click", e => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const row = b.closest("tr[data-id]") || b.closest("tr.editor")?.previousElementSibling;
+    const id = row && row.dataset.id; if (!id) return;
+    const k = keyOf(), act = b.dataset.act;
+    if (act === "toggle") {
+      const set = new Set(state.done[k] || []);
+      set.has(id) ? set.delete(id) : set.add(id);
+      state.done[k] = [...set]; commit();
+    } else if (act === "edit") {
+      editingId = editingId === id ? null : id; deleteArmed = false; render();
+      if (editingId) $("ed-text")?.focus();
+    } else if (act === "cancel") { editingId = null; deleteArmed = false; render(); }
+    else if (act === "remove") removeItem(id);
+    else if (act === "delete") {
+      if (!deleteArmed) { deleteArmed = true; b.textContent = "Tap again to delete"; return; }
+      removeItem(id);
+    } else if (act === "snooze") {
+      const item = state.items.find(i => i.id === id);
+      const eff = effective(item);
+      const start = Math.min(Math.ceil((nowMinutes() + 60) / 5) * 5, 23 * 60 + 55);
+      const s = { time: toHHMM(start) };
+      if (eff.end) s.end = toHHMM(Math.min(start + Math.max(5, toMin(eff.end) - toMin(eff.time)), 23 * 60 + 59));
+      (state.snoozed[k] = state.snoozed[k] || {})[id] = s; commit();
+    } else if (act === "skip") { $("skip-row").hidden = false; $("ed-reason").focus(); }
+    else if (act === "skip-confirm") {
+      (state.skipped[k] = state.skipped[k] || {})[id] = $("ed-reason").value.trim();
+      editingId = null; commit();
+    } else if (act === "unskip") {
+      delete (state.skipped[k] || {})[id]; editingId = null; commit();
+    }
+  });
+
+  function saveEdit(form) {
+    const item = state.items.find(i => i.id === editingId); if (!item) return;
+    const text = $("ed-text").value.trim(); if (!text) return;
+    item.time = $("ed-time").value || item.time;
+    item.text = text;
+    const end = $("ed-end").value; if (end && toMin(end) > toMin(item.time)) item.end = end; else delete item.end;
+    const note = $("ed-note").value.trim(); if (note) item.note = note; else delete item.note;
+    applyChips(item, form.querySelector(".chips"));
+    delete item.sample;
+    if (state.snoozed[keyOf()]) delete state.snoozed[keyOf()][item.id];
+    editingId = null; commit();
+  }
+
+  function removeItem(id) {
+    state.items = state.items.filter(i => i.id !== id);
+    if (editingId === id) editingId = null;
+    deleteArmed = false;
+    commit();
+  }
+
+  $("new-days").innerHTML = chipsHTML(ALL_DAYS, false);
+  $("new-days").addEventListener("click", onChipClick);
+  $("toggle-options").onclick = () => {
+    const open = $("add-more").hidden;
+    $("add-more").hidden = !open;
+    $("toggle-options").setAttribute("aria-expanded", open);
+    $("toggle-options").textContent = open ? "Hide options" : "Options";
+  };
+  $("toggle-other").onclick = () => { showOther = !showOther; render(); };
+
+  $("add-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const time = $("new-time").value, text = $("new-text").value.trim();
+    if (!time || !text) return;
+    const item = { id: uid(), time, text };
+    const end = $("new-end").value; if (end && toMin(end) > toMin(time)) item.end = end;
+    const note = $("new-note").value.trim(); if (note) item.note = note;
+    applyChips(item, $("new-days").querySelector(".chips"));
+    state.items.push(item);
+    $("new-text").value = ""; $("new-end").value = ""; $("new-note").value = "";
+    $("new-days").innerHTML = chipsHTML(ALL_DAYS, false);
+    $("new-text").focus();
+    commit();
+  });
+
+  $("templates").innerHTML = TEMPLATES.map((t, i) =>
+    '<button type="button" class="btn ghost" data-tpl="' + i + '">' + t.name + ' <span>' + t.tasks.length + ' tasks · ' +
+    (t.days.length === 2 ? "Weekends" : "Mon–Fri") + '</span></button>').join("");
+  $("templates").addEventListener("click", e => {
+    const b = e.target.closest("[data-tpl]"); if (!b) return;
+    const t = TEMPLATES[+b.dataset.tpl];
+    t.tasks.forEach(([time, text]) => state.items.push({ id: uid(), time, text, days: [...t.days] }));
+    $("tpl-msg").hidden = false;
+    $("tpl-msg").textContent = "Added " + t.tasks.length + " tasks from " + t.name + ". Tap any task to change it.";
+    commit();
+  });
+
+  $("clear-samples").onclick = () => { state.items = state.items.filter(i => !i.sample); commit(); };
+  $("reset-day").onclick = () => { delete state.done[keyOf()]; commit(); };
+
+  // ---- pages
+  const PAGES = ["checklist", "owe", "receipts"];
+  function showPage(name) {
+    PAGES.forEach(n => { $("page-" + n).hidden = n !== name; $("tab-" + n).setAttribute("aria-selected", n === name); });
+    try { history.replaceState(null, "", "#" + name); } catch {}
+  }
+  PAGES.forEach(n => { $("tab-" + n).onclick = () => showPage(n); });
+  if (PAGES.includes(location.hash.slice(1))) showPage(location.hash.slice(1));
+
+  // ---- money I owe
+  const money = n => new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(n);
+  const shortDate = k => dateOf(k).toLocaleDateString(undefined, { month: "short", day: "numeric", year: dateOf(k).getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
+  const dayDiff = k => Math.round((dateOf(k) - dateOf(keyOf())) / 86400000);
+  // debts have dir "owe" (I owe them) or "owed" (they owe me); older entries without dir are "owe"
+  let oweEditId = null, oweDeleteArmed = false;
+  const showPaid = { owe: false, owed: false };
+  const SIDES = {
+    owe: { title: "I owe", who: "Who I owe", none: "You don't owe anyone right now", people: n => "to " + n + (n === 1 ? " person" : " people"), empty: "Nothing owed. Add an entry above." },
+    owed: { title: "Owed to me", who: "Who owes me", none: "Nobody owes you right now", people: n => "from " + n + (n === 1 ? " person" : " people"), empty: "Nobody owes you. Add an entry above." },
+  };
+  const sideOf = d => d.dir === "owed" ? "owed" : "owe";
+
+  function dueLabel(d) {
+    if (!d.due) return null;
+    const n = dayDiff(d.due);
+    if (n < 0) return { cls: "overdue", text: (-n) + (n === -1 ? " day" : " days") + " overdue" };
+    if (n === 0) return { cls: "overdue", text: "Due today" };
+    if (n <= 7) return { cls: "soon", text: "Due in " + n + (n === 1 ? " day" : " days") };
+    return { cls: "later", text: "Due " + shortDate(d.due) };
+  }
+
+  // build each side's fixed parts once
+  for (const side of ["owe", "owed"]) {
+    const L = SIDES[side];
+    $("col-" + side).innerHTML =
+      '<h2 class="side-title">' + L.title + '</h2>' +
+      '<div class="owe-total"><span class="big" id="' + side + '-big">$0.00</span><span class="sub" id="' + side + '-sub"></span></div>' +
+      '<section><h2>Add</h2><form class="debt-form" data-side="' + side + '" autocomplete="off">' +
+        '<label>' + L.who + '<input type="text" id="' + side + '-who" maxlength="80" required></label>' +
+        '<label>How much<input type="number" id="' + side + '-amount" min="0.01" step="0.01" inputmode="decimal" required></label>' +
+        '<label class="full">What it\'s for<input type="text" id="' + side + '-what" maxlength="140"></label>' +
+        '<label>When it happened<input type="date" id="' + side + '-date" required></label>' +
+        '<label>Due date (if any)<input type="date" id="' + side + '-due"></label>' +
+        '<button class="btn" type="submit">Add</button>' +
+      '</form></section>' +
+      '<section><h2>Still open</h2><ul class="debts" id="' + side + '-list"></ul></section>' +
+      '<section id="' + side + '-people-section"><h2>By person</h2><div class="people" id="' + side + '-people"></div></section>' +
+      '<section id="' + side + '-paid-section"><h2><button type="button" class="linkish" id="' + side + '-toggle-paid" style="font-size:20px;font-weight:700;color:var(--c1);text-decoration:none"></button></h2>' +
+        '<ul class="debts" id="' + side + '-paid-list" hidden></ul></section>';
+    $(side + "-date").value = keyOf();
+  }
+
+  function debtEditHTML(d) {
+    return '<form class="debt-form debt-edit" id="debt-edit-form" autocomplete="off">' +
+      '<label>' + SIDES[sideOf(d)].who + '<input type="text" id="de-who" maxlength="80" required value="' + esc(d.who) + '"></label>' +
+      '<label>How much<input type="number" id="de-amount" min="0.01" step="0.01" inputmode="decimal" required value="' + d.amount + '"></label>' +
+      '<label class="full">What it\'s for<input type="text" id="de-what" maxlength="140" value="' + esc(d.what || "") + '"></label>' +
+      '<label>When it happened<input type="date" id="de-date" required value="' + d.date + '"></label>' +
+      '<label>Due date (if any)<input type="date" id="de-due" value="' + (d.due || "") + '"></label>' +
+      '<div class="actions full"><button class="btn" type="submit">Save</button>' +
+      '<button class="btn ghost" type="button" data-dact="cancel">Cancel</button><span class="spacer"></span>' +
+      '<button class="btn ghost" type="button" data-dact="delete">' + (oweDeleteArmed ? "Tap again to delete" : "Delete") + '</button></div>' +
+    '</form>';
+  }
+
+  function debtHTML(d) {
+    const due = d.paid ? null : dueLabel(d);
+    const dates = ["Since " + shortDate(d.date)];
+    if (d.paid) dates.push("paid " + shortDate(d.paid));
+    else if (d.due) dates.push("due " + shortDate(d.due));
+    return '<li class="debt' + (d.paid ? " paid" : "") + '" data-id="' + d.id + '">' +
+      '<button class="check" type="button" data-dact="paid" aria-pressed="' + !!d.paid + '" aria-label="' + (d.paid ? "Mark not paid: " : "Mark paid: ") + esc(d.who) + '">' + CHECK + '</button>' +
+      '<div><button class="debt-who" type="button" data-dact="edit" aria-expanded="' + (oweEditId === d.id) + '">' + esc(d.who) + '</button>' +
+        (d.what ? '<div class="debt-what">' + esc(d.what) + '</div>' : "") +
+        '<div class="debt-dates">' + esc(dates.join(" · ")) + '</div></div>' +
+      '<div><span class="debt-amt">' + money(d.amount) + '</span>' + (due ? '<span class="debt-due ' + due.cls + '">' + due.text + '</span>' : "") + '</div>' +
+      '<button class="remove" type="button" data-dact="remove" aria-label="Remove ' + esc(d.who) + '">' + CROSS + '</button>' +
+      (oweEditId === d.id ? debtEditHTML(d) : "") +
+    '</li>';
+  }
+
+  function renderSide(side) {
+    const L = SIDES[side];
+    const debts = (state.debts || []).filter(d => sideOf(d) === side);
+    const open = debts.filter(d => !d.paid).sort((a, b) => {
+      if (a.due && b.due) return a.due < b.due ? -1 : 1;
+      if (a.due || b.due) return a.due ? -1 : 1;
+      return a.date < b.date ? -1 : 1;
+    });
+    const paid = debts.filter(d => d.paid).sort((a, b) => a.paid < b.paid ? 1 : -1);
+    const overdue = open.filter(d => d.due && dayDiff(d.due) < 0);
+    const people = {};
+    open.forEach(d => { const k = d.who.trim(); people[k] = (people[k] || 0) + d.amount; });
+
+    $(side + "-big").textContent = money(open.reduce((a, d) => a + d.amount, 0));
+    const bits = [open.length ? L.people(Object.keys(people).length) : L.none];
+    if (overdue.length) bits.push(overdue.length + " overdue (" + money(overdue.reduce((a, d) => a + d.amount, 0)) + ")");
+    $(side + "-sub").textContent = bits.join(" · ");
+    $(side + "-list").innerHTML = open.length ? open.map(debtHTML).join("") : '<li class="empty">' + L.empty + '</li>';
+    const names = Object.entries(people).sort((a, b) => b[1] - a[1]);
+    $(side + "-people-section").hidden = names.length < 2;
+    $(side + "-people").innerHTML = names.map(([n, v]) => '<div class="person"><span>' + esc(n) + '</span><span>' + money(v) + '</span></div>').join("");
+    $(side + "-paid-section").hidden = !paid.length;
+    $(side + "-toggle-paid").textContent = "Paid (" + paid.length + ") " + (showPaid[side] ? "▾" : "▸");
+    $(side + "-toggle-paid").setAttribute("aria-expanded", showPaid[side]);
+    $(side + "-paid-list").hidden = !showPaid[side];
+    $(side + "-paid-list").innerHTML = paid.map(debtHTML).join("");
+  }
+
+  function renderOwe() {
+    renderSide("owe"); renderSide("owed");
+    $("debt-sample-notice").hidden = !(state.debts || []).some(d => d.sample);
+    const f = $("debt-edit-form");
+    if (f) f.addEventListener("submit", e => {
+      e.preventDefault();
+      const d = state.debts.find(x => x.id === oweEditId); if (!d) return;
+      const amount = Math.round(parseFloat($("de-amount").value) * 100) / 100;
+      if (!$("de-who").value.trim() || !(amount > 0)) return;
+      d.who = $("de-who").value.trim(); d.amount = amount; d.what = $("de-what").value.trim();
+      d.date = $("de-date").value || d.date;
+      if ($("de-due").value) d.due = $("de-due").value; else delete d.due;
+      delete d.sample;
+      oweEditId = null; commit();
+    });
+  }
+
+  $("page-owe").addEventListener("click", e => {
+    const tp = e.target.closest('[id$="-toggle-paid"]');
+    if (tp) { const side = tp.id.split("-")[0]; showPaid[side] = !showPaid[side]; renderOwe(); return; }
+    const b = e.target.closest("[data-dact]"); if (!b) return;
+    const li = b.closest("li[data-id]"); if (!li) return;
+    const id = li.dataset.id, d = state.debts.find(x => x.id === id); if (!d) return;
+    const act = b.dataset.dact;
+    if (act === "paid") { if (d.paid) delete d.paid; else d.paid = keyOf(); commit(); }
+    else if (act === "edit") { oweEditId = oweEditId === id ? null : id; oweDeleteArmed = false; renderOwe(); if (oweEditId) $("de-who")?.focus(); }
+    else if (act === "cancel") { oweEditId = null; oweDeleteArmed = false; renderOwe(); }
+    else if (act === "remove" || act === "delete") {
+      if (act === "delete" && !oweDeleteArmed) { oweDeleteArmed = true; b.textContent = "Tap again to delete"; return; }
+      state.debts = state.debts.filter(x => x.id !== id); oweEditId = null; oweDeleteArmed = false; commit();
+    }
+  });
+  $("page-owe").addEventListener("submit", e => {
+    const f = e.target.closest("form[data-side]"); if (!f) return;
+    e.preventDefault();
+    const side = f.dataset.side, v = id => $(side + "-" + id).value;
+    const who = v("who").trim(), amount = Math.round(parseFloat(v("amount")) * 100) / 100;
+    if (!who || !(amount > 0)) return;
+    const d = { id: uid(), who, amount, what: v("what").trim(), date: v("date") || keyOf() };
+    if (side === "owed") d.dir = "owed";
+    if (v("due")) d.due = v("due");
+    state.debts.push(d);
+    ["who", "amount", "what", "due"].forEach(x => { $(side + "-" + x).value = ""; });
+    $(side + "-date").value = keyOf();
+    $(side + "-who").focus();
+    commit();
+  });
+  $("clear-debt-samples").onclick = () => { state.debts = state.debts.filter(d => !d.sample); commit(); };
+
+  // ---- receipts
+  let rcDraft = null, rcFile = null, rcOpenId = null, rcDeleteArmed = false, rcBusy = false;
+  const num = v => { const n = typeof v === "number" ? v : parseFloat(String(v ?? "").replace(/[^0-9.\-]/g, "")); return isFinite(n) ? Math.round(n * 100) / 100 : null; };
+  const isDate = v => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(dateOf(v));
+  const lineTotal = it => (num(it.qty) || 1) * (num(it.price) || 0);
+
+  function rcStatus(text, err) {
+    const el = $("rc-status");
+    el.hidden = !text; el.textContent = text || ""; el.classList.toggle("err", !!err);
+  }
+
+  function returnLabel(r) {
+    if (r.returned) return { cls: "later", text: "Returned " + shortDate(r.returned) };
+    if (!r.returnBy) return null;
+    const n = dayDiff(r.returnBy);
+    if (n < 0) return { cls: "later", text: "Return window closed" };
+    if (n === 0) return { cls: "overdue", text: "Last day to return" };
+    if (n <= 7) return { cls: "overdue", text: "Return in " + n + (n === 1 ? " day" : " days") };
+    return { cls: "later", text: "Return by " + shortDate(r.returnBy) };
+  }
+
+  function renderReceipts() {
+    const list = [...(state.receipts || [])].sort((a, b) => (b.orderDate || "") < (a.orderDate || "") ? -1 : 1);
+    const kept = list.filter(r => !r.returned);
+    const itemsOf = r => r.subtotal != null ? r.subtotal : (r.items || []).reduce((a, it) => a + lineTotal(it), 0);
+    $("rc-items-total").textContent = money(kept.reduce((a, r) => a + itemsOf(r), 0));
+    $("rc-tax-total").textContent = money(kept.reduce((a, r) => a + (r.tax || 0), 0));
+    $("rc-grand-total").textContent = money(kept.reduce((a, r) => a + (r.total || 0), 0));
+
+    // still returnable, the one whose window closes first at the top
+    const soon = kept.filter(r => r.returnBy && dayDiff(r.returnBy) >= 0).sort((a, b) => a.returnBy < b.returnBy ? -1 : 1);
+    $("soon-section").hidden = !soon.length;
+    $("soon-list").innerHTML = soon.map(r => {
+      const n = dayDiff(r.returnBy);
+      const first = (r.items || [])[0];
+      const name = first ? first.name : r.store;
+      const more = (r.items || []).length > 1 ? " + " + ((r.items || []).length - 1) + " more" : "";
+      return '<li><button type="button" class="soon" data-soon="' + r.id + '">' +
+        '<span class="soon-days' + (n <= 7 ? " urgent" : "") + '">' + (n === 0 ? "Today" : n === 1 ? "1 day left" : n + " days left") + '</span>' +
+        '<span class="soon-name">' + esc(name) + '<span class="soon-sub">' + esc((r.store || "") + more + " · by " + shortDate(r.returnBy)) + '</span></span>' +
+        '<span class="soon-amt">' + (r.total != null ? money(r.total) : "") + '</span>' +
+      '</button></li>';
+    }).join("");
+    $("rc-sample-notice").hidden = !list.some(r => r.sample);
+
+    $("receipts").innerHTML = list.length ? list.map(r => {
+      const rl = returnLabel(r);
+      const n = (r.items || []).reduce((a, it) => a + (num(it.qty) || 1), 0);
+      return '<li class="receipt' + (r.returned ? " returned" : "") + '" data-id="' + r.id + '">' +
+        '<button type="button" class="receipt-row" data-ract="open" aria-expanded="' + (rcOpenId === r.id) + '">' +
+          '<div><div class="receipt-store">' + esc(r.store || "Receipt") + '</div>' +
+          '<div class="receipt-sub">' + esc([r.orderDate ? shortDate(r.orderDate) : "", n ? n + (n === 1 ? " item" : " items") : ""].filter(Boolean).join(" · ")) + '</div></div>' +
+          '<div><span class="receipt-amt">' + (r.total != null ? money(r.total) : "") + '<span class="receipt-tax">' + (r.tax != null ? "Tax " + money(r.tax) : "") + '</span></span>' +
+          (rl ? '<span class="debt-due ' + rl.cls + '">' + rl.text + '</span>' : "") + '</div>' +
+        '</button>' + (rcOpenId === r.id ? receiptDetail(r) : "") + '</li>';
+    }).join("") : '<li class="empty">No receipts yet. Upload a screenshot above.</li>';
+  }
+
+  function receiptDetail(r) {
+    const rows = (r.items || []).map(it => '<tr><td>' + esc(it.name) + ((num(it.qty) || 1) > 1 ? ' <span class="receipt-sub">× ' + num(it.qty) + ' at ' + money(num(it.price) || 0) + '</span>' : "") +
+      '</td><td>' + money(lineTotal(it)) + '</td></tr>').join("");
+    const sum = (label, v, cls) => v == null ? "" : '<tr class="' + (cls || "sum") + '"><td>' + label + '</td><td>' + money(v) + '</td></tr>';
+    const facts = [["Order date", r.orderDate && shortDate(r.orderDate)], ["Return by", r.returnBy ? shortDate(r.returnBy) : "Not on receipt"],
+      ["Order #", r.orderNumber], ["Paid with", r.payment]].filter(f => f[1]);
+    return '<div class="rc-detail">' +
+      '<dl class="rc-facts">' + facts.map(f => '<dt>' + f[0] + '</dt><dd>' + esc(f[1]) + '</dd>').join("") + '</dl>' +
+      '<table class="rc-table"><tbody>' + rows + sum("Subtotal", r.subtotal) + sum("Shipping", r.shipping) + sum("Tax", r.tax) + sum("Total", r.total, "total") + '</tbody></table>' +
+      '<div class="actions">' +
+        '<button class="btn ghost" type="button" data-ract="returned">' + (r.returned ? "Undo returned" : "Mark returned") + '</button>' +
+        '<button class="btn ghost" type="button" data-ract="edit">Edit</button>' +
+        '<span class="spacer"></span>' +
+        '<button class="btn ghost" type="button" data-ract="delete">' + (rcDeleteArmed ? "Tap again to delete" : "Delete") + '</button>' +
+      '</div></div>';
+  }
+
+  $("soon-list").addEventListener("click", e => {
+    const b = e.target.closest("[data-soon]"); if (!b) return;
+    rcOpenId = b.dataset.soon; rcDeleteArmed = false; renderReceipts();
+    document.querySelector('#receipts li[data-id="' + rcOpenId + '"]')?.scrollIntoView({ block: "start", behavior: "smooth" });
+  });
+
+  $("receipts").addEventListener("click", async e => {
+    const b = e.target.closest("[data-ract]"); if (!b) return;
+    const li = b.closest("li[data-id]"); const r = state.receipts.find(x => x.id === li.dataset.id); if (!r) return;
+    const act = b.dataset.ract;
+    if (act === "open") { rcOpenId = rcOpenId === r.id ? null : r.id; rcDeleteArmed = false; renderReceipts(); }
+    else if (act === "returned") { if (r.returned) delete r.returned; else r.returned = keyOf(); commit(); }
+    else if (act === "edit") { rcFile = null; openRcForm(JSON.parse(JSON.stringify(r))); }
+    else if (act === "delete") {
+      if (!rcDeleteArmed) { rcDeleteArmed = true; b.textContent = "Tap again to delete"; return; }
+      state.receipts = state.receipts.filter(x => x.id !== r.id);
+      rcOpenId = null; rcDeleteArmed = false; commit();
+    }
+  });
+
+  function openRcForm(draft) {
+    rcDraft = draft;
+    if (!rcDraft.items || !rcDraft.items.length) rcDraft.items = [{ name: "", qty: 1, price: "" }];
+    renderRcForm();
+    $("rc-form-wrap").scrollIntoView({ block: "nearest" });
+  }
+  function closeRcForm() { rcDraft = null; rcFile = null; $("rc-form-wrap").innerHTML = ""; }
+
+  function renderRcForm() {
+    const d = rcDraft; if (!d) return;
+    const v = x => x == null ? "" : esc(x);
+    const shot = rcFile ? URL.createObjectURL(rcFile) : null;  // shown while checking, never saved
+    $("rc-form-wrap").innerHTML = '<form class="rc-form" id="rc-form" autocomplete="off">' +
+      '<h3>' + (state.receipts.some(r => r.id === d.id) ? "Edit receipt" : "Check the details, then save") + '</h3>' +
+      (shot ? '<img class="rc-shot" alt="Receipt screenshot" src="' + shot + '">' : "") +
+      '<div class="rc-grid">' +
+        '<label>Store<input type="text" id="rc-store" maxlength="80" required value="' + v(d.store) + '"></label>' +
+        '<label>Order number<input type="text" id="rc-order" maxlength="80" value="' + v(d.orderNumber) + '"></label>' +
+        '<label>Order date<input type="date" id="rc-date" value="' + v(d.orderDate) + '"></label>' +
+        '<label>Return by<input type="date" id="rc-return" value="' + v(d.returnBy) + '"></label>' +
+      '</div>' +
+      '<label>Paid with<input type="text" id="rc-pay" maxlength="80" value="' + v(d.payment) + '"></label>' +
+      '<div class="rc-items" id="rc-items">' +
+        '<div class="rc-item rc-item-head"><span>Item</span><span>Qty</span><span>Price each</span><span></span></div>' +
+        d.items.map((it, i) =>
+          '<div class="rc-item" data-i="' + i + '">' +
+            '<input type="text" aria-label="Item ' + (i + 1) + ' name" data-f="name" maxlength="160" placeholder="Item" value="' + v(it.name) + '">' +
+            '<input type="number" aria-label="Item ' + (i + 1) + ' quantity" data-f="qty" min="1" step="1" placeholder="Qty" value="' + v(it.qty) + '">' +
+            '<input type="number" aria-label="Item ' + (i + 1) + ' price each" data-f="price" step="0.01" inputmode="decimal" placeholder="Price each" value="' + v(it.price) + '">' +
+            '<button class="remove" type="button" data-fact="del-item" aria-label="Remove item ' + (i + 1) + '">' + CROSS + '</button>' +
+          '</div>').join("") +
+        '<div><button type="button" class="linkish" data-fact="add-item">Add an item</button></div>' +
+      '</div>' +
+      '<div class="rc-grid">' +
+        '<label>Subtotal<input type="number" id="rc-subtotal" step="0.01" inputmode="decimal" value="' + v(d.subtotal) + '"></label>' +
+        '<label>Shipping<input type="number" id="rc-shipping" step="0.01" inputmode="decimal" value="' + v(d.shipping) + '"></label>' +
+        '<label>Tax<input type="number" id="rc-tax" step="0.01" inputmode="decimal" value="' + v(d.tax) + '"></label>' +
+        '<label>Total<input type="number" id="rc-total" step="0.01" inputmode="decimal" value="' + v(d.total) + '"></label>' +
+      '</div>' +
+      '<div class="actions"><button class="btn" type="submit">Save receipt</button>' +
+        '<button class="btn ghost" type="button" data-fact="cancel">Cancel</button></div>' +
+    '</form>';
+  }
+
+  // keep the draft in sync with what's typed, so adding or removing an item row keeps the rest
+  function readRcForm() {
+    const d = rcDraft;
+    d.store = $("rc-store").value.trim(); d.orderNumber = $("rc-order").value.trim(); d.payment = $("rc-pay").value.trim();
+    d.orderDate = $("rc-date").value || null; d.returnBy = $("rc-return").value || null;
+    d.items = [...document.querySelectorAll("#rc-items .rc-item[data-i]")].map(row => ({
+      name: row.querySelector('[data-f="name"]').value.trim(), qty: num(row.querySelector('[data-f="qty"]').value) || 1, price: num(row.querySelector('[data-f="price"]').value),
+    }));
+    ["subtotal", "shipping", "tax", "total"].forEach(k => { d[k] = num($("rc-" + k).value); });
+  }
+  $("rc-form-wrap").addEventListener("click", e => {
+    const b = e.target.closest("[data-fact]"); if (!b) return;
+    const act = b.dataset.fact;
+    if (act === "cancel") { closeRcForm(); rcStatus(""); return; }
+    readRcForm();
+    if (act === "add-item") rcDraft.items.push({ name: "", qty: 1, price: null });
+    if (act === "del-item") rcDraft.items.splice(+b.closest("[data-i]").dataset.i, 1);
+    renderRcForm();
+  });
+  $("rc-form-wrap").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (rcBusy) return;
+    readRcForm();
+    const d = rcDraft;
+    if (!d.store) { $("rc-store").focus(); return; }
+    d.items = d.items.filter(it => it.name);
+    if (d.total == null) d.total = Math.round((d.items.reduce((a, it) => a + lineTotal(it), 0) + (d.shipping || 0) + (d.tax || 0)) * 100) / 100;
+    amazonDefault(d);
+    if (!d.returnBy) delete d.returnBy;
+    delete d.sample;
+    const i = state.receipts.findIndex(r => r.id === d.id);
+    if (i >= 0) state.receipts[i] = d; else state.receipts.push(d);
+    rcOpenId = d.id;
+    rcStatus("");
+    closeRcForm(); commit();
+  });
+
+  // Amazon gives 30 days; use that when the receipt doesn't say
+  function amazonDefault(d) {
+    if (d.returnBy || !/amazon/i.test(d.store || "") || !isDate(d.orderDate)) return false;
+    const x = dateOf(d.orderDate); x.setDate(x.getDate() + 30); d.returnBy = keyOf(x);
+    return true;
+  }
+  const blankReceipt = () => ({ id: uid(), store: "", orderNumber: "", orderDate: keyOf(), returnBy: null, payment: "", items: [], subtotal: null, shipping: null, tax: null, total: null });
+  $("rc-manual").onclick = () => { rcFile = null; rcStatus(""); openRcForm(blankReceipt()); };
+  $("clear-rc-samples").onclick = () => { state.receipts = state.receipts.filter(r => !r.sample); commit(); };
+
+  // ---- reading orders, all on this device: pasted text goes straight to the parser,
+  // screenshots are turned into text first by Tesseract (files in tess/, loaded on first use)
+  const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+  const DATE_RX = "([A-Za-z]{3,9}\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?,?(?:\\s*\\d{4})?|\\d{1,2}/\\d{1,2}/\\d{2,4}|\\d{4}-\\d{2}-\\d{2})";
+  const AMT_RX = "\\$\\s?(-?[\\d,]+\\.\\d{2})|(-?[\\d,]+\\.\\d{2})";
+  const STORES = ["Amazon", "Walmart", "Target", "Best Buy", "eBay", "Costco", "Etsy", "Home Depot", "Lowe's", "Apple", "Shein", "Temu", "Wayfair", "Kohl's", "Macy's", "CVS", "Walgreens", "Staples", "IKEA", "Nike", "Adidas", "Zara"];
+
+  function parseDate(str, mode, ref) {
+    str = String(str || "").trim();
+    let m, y = null, mo, d;
+    if ((m = str.match(/^([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s*(\d{4})?/))) {
+      mo = MONTHS.indexOf(m[1].slice(0, 3).toLowerCase()); if (mo < 0) return null;
+      d = +m[2]; if (m[3]) y = +m[3];
+    } else if ((m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/))) { mo = +m[1] - 1; d = +m[2]; y = +m[3]; if (y < 100) y += 2000; }
+    else if ((m = str.match(/^(\d{4})-(\d{2})-(\d{2})/))) { y = +m[1]; mo = +m[2] - 1; d = +m[3]; }
+    else return null;
+    if (y == null) {
+      const base = ref ? dateOf(ref) : new Date(); base.setHours(0, 0, 0, 0);
+      y = base.getFullYear();
+      if (mode === "future" && new Date(y, mo, d) < base) y++;
+      if (mode === "past" && new Date(y, mo, d) > new Date()) y--;
+    }
+    const dt = new Date(y, mo, d);
+    return dt.getMonth() === mo ? keyOf(dt) : null;
+  }
+  function amountAfter(text, labels) {
+    for (const l of labels) {
+      const m = text.match(new RegExp("(?:" + l + ")[^$\\d\\n]{0,40}(?:\\n[^$\\d\\n]{0,30})?(?:" + AMT_RX + ")", "i"));
+      if (m) return num(m[1] || m[2]);
+    }
+    return null;
+  }
+  const SUMMARY_RX = /\b(sub-?total|shipping|handling|tax|total|discount|promotion|promo|coupon|savings|gift card|balance|payment|refund|before|charged|grand)\b/i;
+  const STOP_RX = /^(delivered|arriving|arrived|package|return|order|ship|payment|track|buy it again|get product|write a|leave|share|add a|view|your |sold by|condition|item\(s\)|sub-?total|shipping|total|estimated|grand|tax|qty|quantity|now arriving|not yet shipped|delivery)/i;
+  const cleanName = s => s.replace(/^[^A-Za-z0-9]+/, "").replace(/\s*\|\s*$/, "").replace(/\s{2,}/g, " ").trim();
+
+  function parseItems(lines) {
+    const items = [];
+    // Amazon style: the title sits above "Sold by", the price a line or two below it
+    lines.forEach((line, i) => {
+      if (!/sold by/i.test(line)) return;
+      const name = [];
+      for (let j = i - 1; j >= 0 && name.length < 4; j--) {
+        const l = lines[j];
+        if (STOP_RX.test(l) || /^\$?\s?[\d,]+\.\d{2}$/.test(l)) break;
+        name.unshift(l);
+      }
+      let price = null, qty = 1;
+      for (let j = i + 1; j < Math.min(lines.length, i + 6); j++) {
+        const q = lines[j].match(/(?:qty|quantity)\s*:?\s*(\d+)/i); if (q) qty = +q[1];
+        const p = lines[j].match(/^\$\s?([\d,]+\.\d{2})\b/) || lines[j].match(/^([\d,]+\.\d{2})$/);
+        if (p && price == null) price = num(p[1]);
+        if (j > i + 1 && /sold by/i.test(lines[j])) break;
+      }
+      if (name.length) items.push({ name: cleanName(name.join(" ")).slice(0, 160), qty, price });
+    });
+    if (items.length) return items;
+    // plain receipts: "Item name ..... $12.99", optionally "2 x" or "x2"
+    for (const line of lines) {
+      const m = line.match(/^(.{3,}?)\s+\$?\s?([\d,]+\.\d{2})$/);
+      if (!m || SUMMARY_RX.test(m[1])) continue;
+      let name = m[1], qty = 1;
+      const q = name.match(/^(\d+)\s*[x×@]\s+(.*)$/i) || name.match(/^(.*?)\s+[x×]\s?(\d+)$/i);
+      if (q) { if (/^\d+$/.test(q[1])) { qty = +q[1]; name = q[2]; } else { name = q[1]; qty = +q[2]; } }
+      name = cleanName(name); if (!/[A-Za-z]{2}/.test(name)) continue;
+      const total = num(m[2]);
+      items.push({ name: name.slice(0, 160), qty, price: qty > 1 ? Math.round(total / qty * 100) / 100 : total });
+    }
+    return items;
+  }
+
+  function parseOrder(raw) {
+    const text = "\n" + String(raw || "").replace(/\r/g, "").replace(/[ \t]+/g, " ");
+    const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+    const d = blankReceipt();
+    let m;
+    const orderNo = text.match(/\b\d{3}-\d{7}-\d{7}\b/) || text.match(/order\s*(?:#|number|no\.?|id)\s*:?\s*([A-Z0-9][A-Z0-9-]{5,})/i);
+    if (orderNo) d.orderNumber = orderNo[1] || orderNo[0];
+    d.store = STORES.find(s => new RegExp("\\b" + s.replace("'", "'?") + "\\b", "i").test(text)) || (/\b\d{3}-\d{7}-\d{7}\b/.test(text) ? "Amazon" : "");
+    if ((m = text.match(new RegExp("(?:order placed|ordered on|order date|placed on|date ordered|purchased on|purchase date|transaction date)\\s*:?\\s*" + DATE_RX, "i"))))
+      d.orderDate = parseDate(m[1], "past") || keyOf();
+    else if ((m = text.match(new RegExp("\\b(?:date)\\s*:?\\s*" + DATE_RX, "i")))) d.orderDate = parseDate(m[1], "past") || keyOf();
+    if ((m = text.match(new RegExp("(?:eligible through|eligible until|returns? (?:by|until|through|before)|return window closes(?: on)?|last day (?:to|for) returns?)\\s*:?\\s*" + DATE_RX, "i"))))
+      d.returnBy = parseDate(m[1], "future", d.orderDate);
+    if ((m = text.match(/(visa|master\s?card|discover|american express|amex)[^\n\d]{0,30}(\d{4})\b/i)))
+      d.payment = m[1].replace(/\b\w/g, c => c.toUpperCase()).replace(/master\s?card/i, "Mastercard") + " ending in " + m[2];
+    d.subtotal = amountAfter(text, ["item\\(s\\) subtotal", "items subtotal", "sub-?total"]);
+    d.shipping = /shipping[^\n]{0,30}\bfree\b/i.test(text) ? 0 : amountAfter(text, ["shipping (?:&|and) handling", "shipping"]);
+    d.tax = amountAfter(text, ["estimated tax to be collected", "estimated tax", "sales tax", "\\n\\s*tax"]);
+    d.total = amountAfter(text, ["grand total", "order total", "total charged", "amount charged", "\\n\\s*total(?! before)"]);
+    d.items = parseItems(lines);
+    if (!d.items.length && d.subtotal != null) d.items = [{ name: d.store ? d.store + " order" : "Order", qty: 1, price: d.subtotal }];
+    return d;
+  }
+
+  let ocrWorker = null;
+  const abs = p => new URL(p, location.href).href;
+  function loadScript(src) {
+    return new Promise((ok, fail) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = fail; document.head.append(s); });
+  }
+  async function imageToText(file) {
+    if (!window.Tesseract) { rcStatus("Getting the reader ready…"); await loadScript(abs("tess/tesseract.min.js")); }
+    if (!ocrWorker) {
+      rcStatus("Getting the reader ready (only slow the first time)…");
+      ocrWorker = await Tesseract.createWorker("eng", 1, {
+        workerPath: abs("tess/ocr-worker.js"), corePath: abs("tess/core"), langPath: abs("tess/lang"),
+        workerBlobURL: false, cacheMethod: "none",
+        logger: m => { if (m.status === "recognizing text") rcStatus("Reading the screenshot… " + Math.round(m.progress * 100) + "%"); },
+      });
+    }
+    // small screenshots read better when enlarged
+    let img = file;
+    try {
+      const bmp = await createImageBitmap(file);
+      const scale = bmp.width < 1600 ? 2 : 1;
+      if (scale > 1) {
+        const c = document.createElement("canvas"); c.width = bmp.width * scale; c.height = bmp.height * scale;
+        const g = c.getContext("2d"); g.imageSmoothingQuality = "high"; g.drawImage(bmp, 0, 0, c.width, c.height);
+        img = await new Promise(r => c.toBlob(r, "image/png")) || file;
+      }
+    } catch {}
+    const { data } = await ocrWorker.recognize(img);
+    return data.text || "";
+  }
+
+  async function readReceipt(file, text) {
+    if (rcBusy) return;
+    rcBusy = true; closeRcForm(); rcFile = file || null;
+    try {
+      const src = file ? await imageToText(file) : text;
+      const d = parseOrder(src);
+      const found = [d.orderDate && /order placed|ordered on|order date|date/i.test(src) && "order date", d.orderNumber && "order #",
+        d.items.length && d.items.length + (d.items.length === 1 ? " item" : " items"), d.tax != null && "tax", d.total != null && "total"].filter(Boolean);
+      const guessed = amazonDefault(d);
+      if (!found.length) rcStatus("Couldn't find order details in that. Fill in the form below.", true);
+      else rcStatus("Found " + found.join(", ") + "." + (guessed ? " Return date set to 30 days after the order." : d.returnBy ? "" : " No return date found.") +
+        " Check everything, then save.");
+      if (text) $("rc-text").value = "";
+      openRcForm(d);
+    } catch (err) {
+      rcStatus("That screenshot couldn't be read. Try pasting the order text instead, or fill in the form below.", true);
+      openRcForm(blankReceipt());
+    } finally { rcBusy = false; }
+  }
+  $("rc-file").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) readReceipt(f); });
+  const drop = $("rc-drop");
+  drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith("image/")) readReceipt(f); });
+  // paste a screenshot or order text anywhere (except while typing in another box)
+  document.addEventListener("paste", e => {
+    const t = e.target;
+    if (t && t.id !== "rc-text" && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+    const f = [...(e.clipboardData?.files || [])].find(x => x.type.startsWith("image/"));
+    const text = (e.clipboardData?.getData("text/plain") || "").trim();
+    if (!f && text.length < 20) return;
+    e.preventDefault();
+    showPage("receipts");
+    if (f) readReceipt(f);
+    else { $("rc-text").value = text; readReceipt(null, text); }
+  });
+  $("rc-text").addEventListener("keydown", e => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && $("rc-text").value.trim()) readReceipt(null, $("rc-text").value.trim());
+  });
+
+  // ---- reminders: a banner (and an optional sound) when a task's start time arrives while the page is open
+  let audio = null, lastCheck = nowMinutes(), bannerId = null;
+  function renderSoundBtn() { $("sound-toggle").textContent = "Reminder sound: " + (state.prefs.sound ? "on" : "off"); }
+  $("sound-toggle").onclick = () => {
+    state.prefs.sound = !state.prefs.sound;
+    if (state.prefs.sound) { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); beep(); } catch {} }
+    renderSoundBtn(); commit();
+  };
+  function beep() {
+    if (!audio) return;
+    try {
+      [0, .22].forEach(t => {
+        const o = audio.createOscillator(), g = audio.createGain();
+        o.type = "square"; o.frequency.value = 880; g.gain.value = .05;
+        o.connect(g); g.connect(audio.destination);
+        o.start(audio.currentTime + t); o.stop(audio.currentTime + t + .12);
+      });
+    } catch {}
+  }
+  function checkReminders() {
+    const nowMin = nowMinutes(), k = keyOf();
+    const done = new Set(state.done[k] || []), skipped = state.skipped[k] || {};
+    const due = todayRows().filter(r => !done.has(r.id) && skipped[r.id] === undefined && toMin(r.time) > lastCheck && toMin(r.time) <= nowMin);
+    lastCheck = nowMin;
+    if (!due.length) return;
+    const r = due[due.length - 1];
+    bannerId = r.id;
+    $("banner-text").textContent = "It's " + fmt(r.time) + ". Time for: " + r.text;
+    $("banner").hidden = false;
+    if (state.prefs.sound) beep();
+  }
+  $("banner-close").onclick = () => { $("banner").hidden = true; };
+  $("banner-done").onclick = () => {
+    const k = keyOf(), set = new Set(state.done[k] || []);
+    if (bannerId) set.add(bannerId);
+    state.done[k] = [...set]; $("banner").hidden = true; commit();
+  };
+
+  // Default the time picker to the next half hour
+  (() => { let m = nowMinutes(); m = Math.min(Math.ceil((m + 1) / 30) * 30, 23 * 60 + 30); $("new-time").value = toHHMM(m); })();
+
+  // ---- saving: this device always, plus your account when opened as a Claude artifact
+  let remote = null, saveTimer = null;
+  function prune() {
+    const k = keyOf();
+    state.sched[k] = itemsFor(k).map(i => i.id);
+    for (const key of Object.keys(state.snoozed)) if (key !== k) delete state.snoozed[key];
+    for (const obj of [state.done, state.sched, state.skipped, state.totals]) {
+      const keys = Object.keys(obj).sort();
+      while (keys.length > 400) delete obj[keys.shift()];
+    }
+  }
+  function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {} }
+  function commit() {
+    prune(); saveLocal(); render();
+    if (remote) { clearTimeout(saveTimer); saveTimer = setTimeout(pushRemote, 400); }
+  }
+  function setSync(t) { ["sync-status", "owe-sync-status", "rc-sync-status"].forEach(id => { $(id).textContent = t; }); }
+  async function pushRemote() {
+    try { await remote.set(JSON.parse(JSON.stringify(state))); setSync("Saved to your account"); }
+    catch { setSync("Saved on this device only"); }
+  }
+
+  prune(); saveLocal(); renderSoundBtn(); render();
+  setInterval(() => { checkReminders(); if (!editingId && !oweEditId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
+
+  (async () => {
+    if (!window.claude || !window.claude.use) return;
+    try {
+      const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+      if (!db || !user) return;
+      const id = await user.id();
+      if (!id) return;
+      remote = db.collection("data/users/" + id).doc("schedule");
+      const snap = await remote.get();
+      const data = snap.exists ? snap.data() : null;
+      if (data && Array.isArray(data.items)) {
+        state = normalize(JSON.parse(JSON.stringify(data)));
+        prune(); saveLocal(); renderSoundBtn(); render();
+        setSync("Saved to your account");
+      } else {
+        await pushRemote();
+      }
+    } catch { remote = null; }
+  })();
+})();
+</script>
+<script>
+  // works offline once installed on the home screen
+  if ("serviceWorker" in navigator && location.protocol === "https:" && !/claude/.test(location.hostname)) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+</script>
+</body>
+</html>
