@@ -200,6 +200,44 @@
   .day-panel { margin-top: 16px; }
   .day-panel h3 { margin: 0 0 8px; font-size: 15px; }
 
+  /* full calendar: edge to edge, English and Hebrew day numbers, reminders written in each day */
+  .cal-section { display: flex; flex-direction: column; gap: 10px; }
+  .cal-nav { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .cal-titles h2 { margin: 0; font-size: 21px; }
+  .cal-heb { font-size: 14px; color: var(--c2); text-align: left; unicode-bidi: plaintext; }
+  .cal-btns { display: flex; gap: 6px; }
+  .cal-today { font: inherit; font-size: 13.5px; font-weight: 600; height: 36px; padding: 0 12px; border: 1px solid var(--c4); background: var(--c5); color: var(--c1); cursor: pointer; }
+  .cal-full { margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px))); }
+  .cweek, .cgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .cweek span { font-size: 11px; color: var(--c3); text-align: center; padding: 4px 0; }
+  .cgrid { border-top: 1px solid var(--c4); }
+  .cday { min-width: 0; min-height: 86px; display: flex; flex-direction: column; gap: 2px; padding: 4px 3px 5px; border: 0;
+    border-right: 1px solid var(--c4); border-bottom: 1px solid var(--c4); background: var(--c5); color: var(--c1); font: inherit; text-align: left; cursor: pointer; }
+  .cday:nth-child(7n) { border-right: 0; }
+  .cday:active { background: var(--c4); }
+  .ctop { display: flex; justify-content: space-between; align-items: center; gap: 2px; }
+  .cnum { width: 22px; height: 22px; display: grid; place-items: center; font-size: 12.5px; font-weight: 600; flex: none; }
+  .cday.today .cnum { background: var(--accent); color: var(--on-accent); border-radius: 50%; }
+  .cheb { font-size: 10px; color: var(--c3); white-space: nowrap; }
+  .cday.out .cnum, .cday.out .cheb, .cday.out .cev { opacity: .4; }
+  .cev { display: block; font-size: 10px; line-height: 1.3; padding: 1px 3px; background: var(--c4); border-left: 2px solid var(--accent);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cev.done { text-decoration: line-through; color: var(--c3); border-left-color: var(--c3); }
+  .cmore { font-size: 10px; color: var(--c3); padding-left: 3px; }
+
+  /* a day opens as a sheet over the blurred calendar; tap outside to close */
+  .sheet-wrap { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
+    padding: max(24px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+    background: rgba(13, 16, 22, .3); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .sheet { width: 100%; max-width: 520px; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; background: var(--c5); border: 1px solid var(--c4);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .25); padding: 18px 16px 16px; display: flex; flex-direction: column; gap: 12px; animation: sheet-in .18s ease-out; }
+  @keyframes sheet-in { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+  .sheet-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .sheet-head h2 { margin: 0; font-size: 19px; }
+  .sheet-heb { font-size: 14px; color: var(--c2); text-align: left; unicode-bidi: plaintext; margin-top: 2px; }
+  .sheet-x { flex: none; width: 36px; height: 36px; border: 0; background: var(--c4); color: var(--c1); font-size: 22px; line-height: 1; cursor: pointer; }
+  .sheet-nav { display: flex; justify-content: space-between; padding-top: 4px; font-size: 13.5px; }
+
   /* calendar */
   .cal-wrap { display: flex; flex-direction: column; gap: 4px; }
   .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
@@ -464,17 +502,19 @@
     <div id="add-today"></div>
   </section>
 
-  <section aria-labelledby="cal-title">
+  <section aria-labelledby="cal-title" class="cal-section">
     <div class="cal-nav">
-      <button type="button" class="cal-arrow" id="cal-prev" aria-label="Previous month">‹</button>
-      <h2 id="cal-title">Month</h2>
-      <button type="button" class="cal-arrow" id="cal-next" aria-label="Next month">›</button>
+      <div class="cal-titles"><h2 id="cal-title">Month</h2><div class="cal-heb" id="cal-heb" dir="rtl"></div></div>
+      <div class="cal-btns">
+        <button type="button" class="cal-arrow" id="cal-prev" aria-label="Previous month">‹</button>
+        <button type="button" class="cal-today" id="cal-today">Today</button>
+        <button type="button" class="cal-arrow" id="cal-next" aria-label="Next month">›</button>
+      </div>
     </div>
-    <div class="cal-wrap">
-      <div class="cal cal-head" aria-hidden="true"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
-      <div class="cal" id="cal"></div>
+    <div class="cal-full">
+      <div class="cweek" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+      <div class="cgrid" id="cal"></div>
     </div>
-    <div id="day-panel"></div>
   </section>
 
   <section aria-labelledby="general-title">
@@ -569,6 +609,22 @@
   </div>
 </div>
 
+
+<div class="sheet-wrap" id="day-modal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet-head">
+      <div><h2 id="sheet-title">Day</h2><div class="sheet-heb" id="sheet-heb" dir="rtl"></div></div>
+      <button type="button" class="sheet-x" data-sheet-close aria-label="Close">×</button>
+    </div>
+    <ul class="rems" id="sheet-list"></ul>
+    <div id="add-modal"></div>
+    <div class="sheet-nav">
+      <button type="button" class="linkish" data-sheet-step="-1">‹ Previous day</button>
+      <button type="button" class="linkish" data-sheet-step="1">Next day ›</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (() => {
   const LS_KEY = "daily-checklist-v1";
@@ -618,8 +674,38 @@
   try { const saved = JSON.parse(localStorage.getItem(LS_KEY)); if (saved && typeof saved === "object") state = normalize(saved); } catch {}
 
   const $ = id => document.getElementById(id);
-  // ---- reminders page: today at the top, a month calendar, then general reminders
-  let remEditId = null, remOpenId = null, remDelArmed = false, remAdd = null, selDate = null, calMonth = null;
+  // ---- reminders page: today at the top, a full month calendar, then general reminders; a tapped day opens as a sheet
+  let remEditId = null, remOpenId = null, remDelArmed = false, remAdd = null, calMonth = null, sheetDate = null;
+
+  // Hebrew dates: the phone's calendar gives the Hebrew day, month and year; the numbers are written in Hebrew letters here
+  const HEB = (() => { try { return new Intl.DateTimeFormat("he-u-ca-hebrew", { day: "numeric", month: "long", year: "numeric" }); } catch { return null; } })();
+  function gematria(n) {
+    const L = [[400, "ת"], [300, "ש"], [200, "ר"], [100, "ק"], [90, "צ"], [80, "פ"], [70, "ע"], [60, "ס"], [50, "נ"], [40, "מ"], [30, "ל"], [20, "כ"], [10, "י"],
+      [9, "ט"], [8, "ח"], [7, "ז"], [6, "ו"], [5, "ה"], [4, "ד"], [3, "ג"], [2, "ב"], [1, "א"]];
+    let out = "";
+    n %= 1000;
+    while (n > 0) {
+      if (n === 15) { out += "טו"; break; }
+      if (n === 16) { out += "טז"; break; }
+      const [v, l] = L.find(([v]) => v <= n); out += l; n -= v;
+    }
+    return out.length === 1 ? out + "׳" : out.slice(0, -1) + "״" + out.slice(-1);
+  }
+  function heb(d) {
+    if (!HEB) return null;
+    const p = {};
+    for (const x of HEB.formatToParts(d)) p[x.type] = x.value;
+    const day = parseInt(p.day, 10), year = parseInt(p.year, 10);
+    if (!day || !year || !p.month) return null;
+    return { day, month: p.month.replace(/^ב/, ""), year };
+  }
+  const hebDay = d => { const h = heb(d); return h ? gematria(h.day) : ""; };
+  const hebFull = d => { const h = heb(d); return h ? gematria(h.day) + " ב" + h.month + " " + gematria(h.year) : ""; };
+  function hebRange(a, b) {
+    const x = heb(a), y = heb(b); if (!x || !y) return "";
+    if (x.month === y.month) return x.month + " " + gematria(x.year);
+    return x.month + (x.year !== y.year ? " " + gematria(x.year) : "") + " – " + y.month + " " + gematria(y.year);
+  }
 
   function render() {
     const now = new Date();
@@ -631,18 +717,22 @@
   }
 
   const byTime = (a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || (a.time || "99").localeCompare(b.time || "99");
-  function remHTML(r, showDate) {
-    const when = [showDate && r.date ? shortDate(r.date) : "", r.time ? fmt(r.time) : ""].filter(Boolean).join(" · ");
+  // where: "page" or "sheet"; a reminder's Edit/Delete panel and edit form show only where it was tapped
+  let remWhere = "page";
+  function remHTML(r, where) {
+    const when = r.time ? fmt(r.time) : "";
     const soon = r.date === keyOf() && r.time && !r.done && toMin(r.time) >= nowMinutes() && toMin(r.time) - nowMinutes() <= 60;
-    const open = remOpenId === r.id && remEditId !== r.id;
+    const here = remWhere === where;
+    const open = here && remOpenId === r.id && remEditId !== r.id;
     return '<li class="rem' + (r.done ? " done" : "") + (open ? " open" : "") + '" data-rid="' + r.id + '">' +
       '<button class="check" type="button" data-ract2="done" aria-pressed="' + !!r.done + '" aria-label="' + (r.done ? "Mark not done: " : "Mark done: ") + esc(r.text) + '">' + CHECK + '</button>' +
       '<button class="rem-text" type="button" data-ract2="open" aria-expanded="' + open + '">' + esc(r.text) + (when ? '<span class="rem-when' + (soon ? " soon" : "") + '">' + esc(when) + '</span>' : "") + '</button>' +
     '</li>' +
     (open ? '<li class="rem-actions" data-rid="' + r.id + '"><button class="btn ghost" type="button" data-ract2="edit">Edit</button>' +
+      (r.date ? '<button class="btn ghost" type="button" data-ract2="tomorrow">Move to next day</button>' : "") +
       '<button class="btn ghost" type="button" data-ract2="delete">' + (remDelArmed ? "Tap again to delete" : "Delete") + '</button>' +
       '<button class="btn ghost" type="button" data-ract2="close">Close</button></li>' : "") +
-    (remEditId === r.id ? '<li>' + remFormHTML("edit", r) + '</li>' : "");
+    (here && remEditId === r.id ? '<li>' + remFormHTML("edit", r) + '</li>' : "");
   }
   // date and time are both optional: each is a box that opens the phone's own calendar or time wheel, with a Clear button
   const pickText = (type, v) => !v ? (type === "date" ? "No date" : "No time")
@@ -654,7 +744,7 @@
       '<button type="button" class="linkish pick-clear" data-clear="' + id + '"' + (value ? "" : " hidden") + '>Clear</button></div></div>';
   }
   function remFormHTML(scope, r) {
-    const date = r ? (r.date || "") : scope === "today" ? keyOf() : scope === "day" ? selDate : "";
+    const date = r ? (r.date || "") : scope === "today" ? keyOf() : scope === "modal" ? sheetDate : "";
     return '<form class="rem-form" data-rscope="' + scope + '" autocomplete="off">' +
       '<label class="full">Reminder<input type="text" id="rf-text-' + scope + '" maxlength="140" required value="' + (r ? esc(r.text) : "") + '"></label>' +
       pickHTML("date", "rf-date-" + scope, date, "Date") +
@@ -670,74 +760,89 @@
     const today = keyOf(), list = state.reminders;
     $("sample-notice").hidden = !list.some(r => r.sample);
     const todays = list.filter(r => r.date === today).sort(byTime);
-    $("rem-today").innerHTML = todays.length ? todays.map(r => remHTML(r, false)).join("") : '<li class="empty muted">Nothing for today.</li>';
+    $("rem-today").innerHTML = todays.length ? todays.map(r => remHTML(r, "page")).join("") : '<li class="empty muted">Nothing for today.</li>';
     $("add-today").innerHTML = addArea("today");
     const general = list.filter(r => !r.date).sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0));
-    $("rem-general").innerHTML = general.length ? general.map(r => remHTML(r, false)).join("") : '<li class="empty muted">No general reminders.</li>';
+    $("rem-general").innerHTML = general.length ? general.map(r => remHTML(r, "page")).join("") : '<li class="empty muted">No general reminders.</li>';
     $("add-general").innerHTML = addArea("general");
     renderRemCalendar();
+    renderSheet();
   }
 
+  const shortTime = t => { const [h, m] = t.split(":").map(Number); return ((h % 12) || 12) + (m ? ":" + String(m).padStart(2, "0") : "") + (h >= 12 ? "p" : "a"); };
   function renderRemCalendar() {
     const now = new Date(); now.setHours(0, 0, 0, 0);
     if (!calMonth) calMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const y = calMonth.getFullYear(), m = calMonth.getMonth(), n = new Date(y, m + 1, 0).getDate();
+    const y = calMonth.getFullYear(), m = calMonth.getMonth(), first = new Date(y, m, 1), last = new Date(y, m + 1, 0);
     $("cal-title").textContent = calMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-    const count = {};
-    for (const r of state.reminders) if (r.date && !r.done) count[r.date] = (count[r.date] || 0) + 1;
-    let html = '<div class="day blank"></div>'.repeat(new Date(y, m, 1).getDay());
-    for (let d = 1; d <= n; d++) {
-      const date = new Date(y, m, d), k = keyOf(date), c = count[k] || 0;
-      const cls = "day" + (date < now ? " past" : "") + (k === keyOf(now) ? " is-today" : "") + (k === selDate ? " selected" : "");
-      html += '<button type="button" class="' + cls + '" data-day="' + k + '" aria-label="' + date.toLocaleDateString(undefined, { month: "long", day: "numeric" }) +
-        (c ? ", " + c + (c === 1 ? " reminder" : " reminders") : "") + '"><span>' + d + '</span><span class="dots">' + "<i></i>".repeat(Math.min(c, 3)) + (c > 3 ? "+" : "") + '</span></button>';
+    $("cal-heb").textContent = hebRange(first, last);
+    const byDate = {};
+    for (const r of state.reminders) if (r.date) (byDate[r.date] = byDate[r.date] || []).push(r);
+    const weeks = Math.ceil((first.getDay() + last.getDate()) / 7);
+    let html = "";
+    for (let i = 0; i < weeks * 7; i++) {
+      const date = new Date(y, m, 1 - first.getDay() + i), k = keyOf(date);
+      const items = (byDate[k] || []).sort(byTime);
+      const cls = "cday" + (date.getMonth() !== m ? " out" : "") + (+date === +now ? " today" : "");
+      html += '<button type="button" class="' + cls + '" data-day="' + k + '" aria-label="' + esc(longDate(k) + (items.length ? ", " + items.length + (items.length === 1 ? " reminder" : " reminders") : "")) + '">' +
+        '<span class="ctop"><span class="cnum">' + date.getDate() + '</span><span class="cheb" dir="rtl">' + hebDay(date) + '</span></span>' +
+        items.slice(0, 3).map(r => '<span class="cev' + (r.done ? " done" : "") + '">' + (r.time ? shortTime(r.time) + " " : "") + esc(r.text) + '</span>').join("") +
+        (items.length > 3 ? '<span class="cmore">+' + (items.length - 3) + ' more</span>' : "") + '</button>';
     }
     $("cal").innerHTML = html;
-    // the tapped day's reminders, under the calendar (today's are already at the top)
-    if (selDate && selDate !== keyOf()) {
-      const items = state.reminders.filter(r => r.date === selDate).sort(byTime);
-      $("day-panel").innerHTML = '<div class="day-panel"><h3>' + esc(longDate(selDate)) + '</h3><ul class="rems">' +
-        (items.length ? items.map(r => remHTML(r, false)).join("") : '<li class="empty muted">Nothing on this day yet.</li>') + '</ul>' + addArea("day") + '</div>';
-    } else $("day-panel").innerHTML = "";
   }
+
+  function renderSheet() {
+    const m = $("day-modal");
+    if (!sheetDate) { m.hidden = true; return; }
+    m.hidden = false;
+    $("sheet-title").textContent = longDate(sheetDate);
+    $("sheet-heb").textContent = hebFull(dateOf(sheetDate));
+    const items = state.reminders.filter(r => r.date === sheetDate).sort(byTime);
+    $("sheet-list").innerHTML = items.length ? items.map(r => remHTML(r, "sheet")).join("") : '<li class="empty muted">Nothing on this day yet.</li>';
+    $("add-modal").innerHTML = addArea("modal");
+  }
+  function openSheet(k) { sheetDate = k; remAdd = null; remEditId = null; remOpenId = null; remWhere = "sheet"; renderReminders(); }
+  function closeSheet() { sheetDate = null; remAdd = null; remEditId = null; remOpenId = null; remWhere = "page"; document.activeElement?.blur(); renderReminders(); }
 
   $("cal-prev").onclick = () => { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1); renderRemCalendar(); };
   $("cal-next").onclick = () => { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1); renderRemCalendar(); };
-  $("page-reminders").addEventListener("click", e => {
-    const day = e.target.closest("[data-day]");
-    if (day) {
-      const k = day.dataset.day;
-      if (k === keyOf()) { selDate = null; remAdd = "today"; renderReminders(); $("rf-text-today")?.focus(); return; }
-      selDate = selDate === k ? null : k; remAdd = selDate ? remAdd : null; renderRemCalendar(); return;
-    }
-    const add = e.target.closest("[data-radd]");
-    if (add) { remAdd = add.dataset.radd; remEditId = null; renderReminders(); $("rf-text-" + remAdd)?.focus(); return; }
-    if (e.target.closest("[data-rclose]")) { remAdd = null; remEditId = null; document.activeElement?.blur(); renderReminders(); return; }
-    const b = e.target.closest("[data-ract2]"); if (!b) return;
-    const r = state.reminders.find(x => x.id === b.closest("[data-rid]").dataset.rid); if (!r) return;
-    const act = b.dataset.ract2;
-    if (act === "done") { r.done = !r.done; commit(); }
-    else if (act === "open") { remOpenId = remOpenId === r.id ? null : r.id; remEditId = null; remDelArmed = false; remAdd = null; renderReminders(); }
-    else if (act === "close") { remOpenId = null; remDelArmed = false; renderReminders(); }
-    else if (act === "edit") { remEditId = r.id; remOpenId = null; remAdd = null; renderReminders(); }
-    else if (act === "delete") {
-      if (!remDelArmed) { remDelArmed = true; b.textContent = "Tap again to delete"; return; }
-      state.reminders = state.reminders.filter(x => x.id !== r.id); remOpenId = null; remDelArmed = false; commit();
-    }
-  });
+  $("cal-today").onclick = () => { calMonth = null; renderRemCalendar(); };
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && sheetDate) closeSheet(); });
+
   const syncPick = input => {
     const type = input.type, v = input.value;
     $(input.id + "-val").textContent = pickText(type, v);
     input.closest(".pick-box").classList.toggle("empty", !v);
     input.closest(".pick").querySelector(".pick-clear").hidden = !v;
   };
-  $("page-reminders").addEventListener("input", e => { if (e.target.classList.contains("pick-input")) syncPick(e.target); });
-  $("page-reminders").addEventListener("change", e => { if (e.target.classList.contains("pick-input")) syncPick(e.target); });
-  $("page-reminders").addEventListener("click", e => {
-    const c = e.target.closest("[data-clear]"); if (!c) return;
-    const input = $(c.dataset.clear); input.value = ""; syncPick(input);
-  });
-  $("page-reminders").addEventListener("submit", e => {
+  function remClick(e, where) {
+    if (where === "sheet") {
+      if (e.target === $("day-modal") || e.target.closest("[data-sheet-close]")) { closeSheet(); return; }
+      const step = e.target.closest("[data-sheet-step]");
+      if (step) { const d = dateOf(sheetDate); d.setDate(d.getDate() + +step.dataset.sheetStep); openSheet(keyOf(d)); return; }
+    }
+    const clr = e.target.closest("[data-clear]");
+    if (clr) { const input = $(clr.dataset.clear); input.value = ""; syncPick(input); return; }
+    const day = e.target.closest("[data-day]");
+    if (day) { openSheet(day.dataset.day); return; }
+    const add = e.target.closest("[data-radd]");
+    if (add) { remAdd = add.dataset.radd; remEditId = null; remOpenId = null; remWhere = where; renderReminders(); $("rf-text-" + remAdd)?.focus(); return; }
+    if (e.target.closest("[data-rclose]")) { remAdd = null; remEditId = null; document.activeElement?.blur(); renderReminders(); return; }
+    const b = e.target.closest("[data-ract2]"); if (!b) return;
+    const r = state.reminders.find(x => x.id === b.closest("[data-rid]").dataset.rid); if (!r) return;
+    const act = b.dataset.ract2;
+    if (act === "done") { r.done = !r.done; commit(); }
+    else if (act === "open") { remOpenId = remOpenId === r.id && remWhere === where ? null : r.id; remWhere = where; remEditId = null; remDelArmed = false; remAdd = null; renderReminders(); }
+    else if (act === "close") { remOpenId = null; remDelArmed = false; renderReminders(); }
+    else if (act === "edit") { remEditId = r.id; remOpenId = null; remAdd = null; remWhere = where; renderReminders(); }
+    else if (act === "tomorrow") { const d = dateOf(r.date); d.setDate(d.getDate() + 1); r.date = keyOf(d); remOpenId = null; commit(); }
+    else if (act === "delete") {
+      if (!remDelArmed) { remDelArmed = true; b.textContent = "Tap again to delete"; return; }
+      state.reminders = state.reminders.filter(x => x.id !== r.id); remOpenId = null; remDelArmed = false; commit();
+    }
+  }
+  function remSubmit(e) {
     const f = e.target.closest("form[data-rscope]"); if (!f) return;
     e.preventDefault();
     const scope = f.dataset.rscope, v = id => { const el = $("rf-" + id + "-" + scope); return el ? el.value : ""; };
@@ -750,7 +855,13 @@
     if (time) r.time = time; else delete r.time;
     if (scope !== "edit") state.reminders.push(r);
     remAdd = null; remEditId = null; remOpenId = null; document.activeElement?.blur(); commit();
-  });
+  }
+  for (const [el, where] of [[$("page-reminders"), "page"], [$("day-modal"), "sheet"]]) {
+    el.addEventListener("click", e => remClick(e, where));
+    el.addEventListener("submit", remSubmit);
+    el.addEventListener("input", e => { if (e.target.classList.contains("pick-input")) syncPick(e.target); });
+    el.addEventListener("change", e => { if (e.target.classList.contains("pick-input")) syncPick(e.target); });
+  }
   $("clear-samples").onclick = () => { state.reminders = state.reminders.filter(r => !r.sample); commit(); };
 
   // ---- pages
@@ -1809,7 +1920,7 @@
   }
 
   prune(); saveLocal(); renderSoundBtn(); render();
-  setInterval(() => { checkReminders(); if (!remEditId && !remOpenId && !remAdd && !oweEditId && !refundOpenId && !addAmtId && !invoiceId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
+  setInterval(() => { checkReminders(); if (!sheetDate && !remEditId && !remOpenId && !remAdd && !oweEditId && !refundOpenId && !addAmtId && !invoiceId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
 
   (async () => {
     if (!window.claude || !window.claude.use) return;
