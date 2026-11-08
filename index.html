@@ -259,7 +259,7 @@
   .receipt { border-bottom: 1px solid var(--c4); }
   .receipt-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 14px 0; width: 100%; font: inherit; color: var(--c1);
     background: none; border: 0; text-align: left; cursor: pointer; }
-  .receipt-store { font-weight: 600; overflow-wrap: anywhere; }
+  .receipt-store { font-weight: 600; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .receipt-sub { font-size: 13px; color: var(--c3); }
   .receipt-amt { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .receipt-tax { display: block; font-size: 12px; font-weight: 400; color: var(--c3); }
@@ -1092,11 +1092,10 @@
 
     $("receipts").innerHTML = list.length ? list.map(r => {
       const rl = returnLabel(r);
-      const n = (r.items || []).reduce((a, it) => a + (num(it.qty) || 1), 0);
       return '<li class="receipt' + (r.returned ? " returned" : "") + '" data-id="' + r.id + '">' +
         '<button type="button" class="receipt-row" data-ract="open" aria-expanded="' + (rcOpenId === r.id) + '">' +
-          '<div><div class="receipt-store">' + esc(r.store || "Receipt") + '</div>' +
-          '<div class="receipt-sub">' + esc([r.orderDate ? shortDate(r.orderDate) : "", n ? n + (n === 1 ? " item" : " items") : ""].filter(Boolean).join(" · ")) + '</div></div>' +
+          '<div style="min-width:0"><div class="receipt-store">' + esc(((r.items || []).find(it => it.name) || {}).name || r.store || "Receipt") + '</div>' +
+          '<div class="receipt-sub">' + esc([r.store, r.orderDate ? shortDate(r.orderDate) : "", (r.items || []).length > 1 ? "+ " + ((r.items || []).length - 1) + " more" : ""].filter(Boolean).join(" · ")) + '</div></div>' +
           '<div><span class="receipt-amt">' + (r.total != null ? money(r.total) : "") + '<span class="receipt-tax">' + (r.tax != null ? "Tax " + money(r.tax) : "") + '</span></span>' +
           (rl ? '<span class="debt-due ' + rl.cls + '">' + rl.text + '</span>' : "") + '</div>' +
         '</button>' + (rcOpenId === r.id ? receiptDetail(r) : "") + '</li>';
