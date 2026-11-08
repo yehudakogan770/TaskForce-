@@ -498,6 +498,9 @@
   input::-webkit-datetime-edit { line-height: 44px; padding: 0; }
   .debt-form label, .rc-form label, .rc-label, .fields label { min-width: 0; }
 
+  .data-links { display: flex; gap: 14px; }
+  .data-links button { font: inherit; color: var(--c2); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
   button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
   html { overflow-x: clip; }
@@ -549,6 +552,7 @@
     <button class="btn ghost" type="button" id="banner-close">Dismiss</button>
   </div>
 
+  <input type="file" id="restore-file" accept="application/json,.json" hidden>
   <div class="notice" id="sample-notice" hidden>
     <span>These are example reminders. Remove them and add your own.</span>
     <button class="btn ghost" id="clear-samples" type="button">Clear examples</button>
@@ -588,6 +592,7 @@
 
   <footer>
     <span id="sync-status">Saved on this device</span>
+    <div class="data-links"><button type="button" data-backup>Back up</button><button type="button" data-restore>Restore</button></div>
     <div class="links">
       <button type="button" id="sound-toggle">Reminder sound: off</button>
     </div>
@@ -620,6 +625,7 @@
 
     <footer>
       <span id="owe-sync-status">Saved on this device</span>
+    <div class="data-links"><button type="button" data-backup>Back up</button><button type="button" data-restore>Restore</button></div>
     </footer>
   </div>
 
@@ -667,6 +673,7 @@
 
     <footer>
       <span id="rc-sync-status">Saved on this device</span>
+    <div class="data-links"><button type="button" data-backup>Back up</button><button type="button" data-restore>Restore</button></div>
     </footer>
   </div>
   </div>
@@ -2033,6 +2040,7 @@
     const r = due[due.length - 1];
     bannerId = r.id;
     $("banner-text").textContent = "It's " + fmt(r.time) + ". Reminder: " + r.text;
+    $("banner-done").hidden = false;
     $("banner").hidden = false;
     if (state.prefs.sound) beep();
   }
@@ -2054,6 +2062,45 @@
     prune(); saveLocal(); render();
     if (remote) { clearTimeout(saveTimer); saveTimer = setTimeout(pushRemote, 400); }
   }
+  // ---- back up and restore: everything goes into one small file the person keeps (Files, email, etc.)
+  async function backUp() {
+    state.prefs.lastBackup = Date.now();
+    const data = JSON.stringify({ app: "TaskForce", version: 1, saved: new Date().toISOString(), state }, null, 1);
+    const name = "TaskForce backup " + keyOf() + ".json";
+    const file = new File([data], name, { type: "application/json" });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); commit(); return; }
+    } catch (e) { if (e && e.name === "AbortError") { delete state.prefs.lastBackup; return; } }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name; document.body.append(a); a.click(); a.remove();
+    commit();
+  }
+  let restoreArmed = null;
+  async function restoreFrom(file) {
+    let data;
+    try { data = JSON.parse(await file.text()); } catch { alertBar("That file isn't a TaskForce backup."); return; }
+    const saved = data && data.app === "TaskForce" && data.state;
+    if (!saved || typeof saved !== "object") { alertBar("That file isn't a TaskForce backup."); return; }
+    const hasEntries = state.reminders.some(r => !r.sample) || state.debts.some(d => !d.sample) || state.receipts.some(r => !r.sample);
+    if (hasEntries && restoreArmed !== file.name) {
+      restoreArmed = file.name;
+      alertBar("Restoring replaces what's in the app now. Choose the file again to confirm.");
+      return;
+    }
+    restoreArmed = null;
+    state = normalize(saved);
+    commit();
+    alertBar("Restored your backup from " + new Date(data.saved).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" }) + ".");
+  }
+  function alertBar(text) {
+    $("banner-text").textContent = text; $("banner").hidden = false;
+    $("banner-done").hidden = true;  // a message, not a reminder: only Dismiss applies
+  }
+  document.addEventListener("click", e => {
+    if (e.target.closest("[data-backup]")) { backUp(); return; }
+    if (e.target.closest("[data-restore]")) { $("restore-file").value = ""; $("restore-file").click(); }
+  });
+  $("restore-file").addEventListener("change", e => { const f = e.target.files[0]; if (f) restoreFrom(f); });
+
   function setSync(t) { ["sync-status", "owe-sync-status", "rc-sync-status"].forEach(id => { $(id).textContent = t; }); }
   async function pushRemote() {
     try { await remote.set(JSON.parse(JSON.stringify(state))); setSync("Saved to your account"); }
