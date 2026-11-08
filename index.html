@@ -34,15 +34,15 @@
   * { box-sizing: border-box; border-radius: 0; }
   img { max-width: 100%; }
   [hidden] { display: none !important; }
+  /* one screen: tabs on top, the three pages side by side in a strip you swipe through; each page scrolls on its own */
+  html, body { height: 100%; }
   body {
     background: var(--c5); color: var(--c1);
     font-family: var(--font); font-size: 16px; line-height: 1.45;
-    padding-left: max(16px, env(safe-area-inset-left, 0px));
-    padding-right: max(16px, env(safe-area-inset-right, 0px));
-    margin: 0;
-    padding-block: max(24px, env(safe-area-inset-top, 0px)) max(56px, env(safe-area-inset-bottom, 0px));
+    margin: 0; overflow: hidden; display: flex; flex-direction: column;
+    padding-top: max(12px, env(safe-area-inset-top, 0px));
   }
-  .app { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 36px; }
+  .app { flex: 1; min-height: 0; width: 100%; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 4px; }
 
   header { display: flex; flex-direction: column; gap: 4px; }
   .head-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
@@ -187,14 +187,19 @@
   footer button { font: inherit; color: var(--c2); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 
   /* page tabs */
-  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--c1); }
-  .tab { font: inherit; font-size: 15px; font-weight: 600; padding: 10px; border: 0; background: var(--c5); color: var(--c1); cursor: pointer; }
-  .tab[aria-selected="true"] { background: var(--c1); color: var(--c5); }
-  .page { display: flex; flex-direction: column; gap: 36px; }
-  .page.slide-left { animation: slide-in-left .22s ease-out; }
-  .page.slide-right { animation: slide-in-right .22s ease-out; }
-  @keyframes slide-in-left { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
-  @keyframes slide-in-right { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: none; } }
+  .tabs { position: relative; isolation: isolate; background: var(--c5); flex: none; display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--c1);
+    margin-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
+  .tab-ind { position: absolute; inset: 0 auto 0 0; width: calc(100% / 3); background: var(--c1); will-change: transform; }
+  /* white text with "difference" shows dark on the light part and light on the black block, even halfway through a swipe */
+  .tab { position: relative; font: inherit; font-size: 15px; font-weight: 600; padding: 10px; border: 0; background: transparent; color: #fff;
+    mix-blend-mode: difference; cursor: pointer; }
+  .pager { flex: 1; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .pager::-webkit-scrollbar { display: none; }
+  .page { flex: 0 0 100%; width: 100%; min-width: 0; height: 100%; overflow-y: auto; overscroll-behavior-y: contain;
+    scroll-snap-align: start; scroll-snap-stop: always; display: flex; flex-direction: column; gap: 36px;
+    padding: 24px max(16px, env(safe-area-inset-right, 0px)) max(56px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+  .page > * { flex-shrink: 0; }
 
   /* money I owe */
   .owe-total { display: flex; flex-direction: column; gap: 2px; }
@@ -303,7 +308,8 @@
   .money-col > h2.side-title { font-size: 24px; margin: 0; padding-bottom: 8px; border-bottom: 3px solid var(--c1); }
   @media (orientation: landscape) and (min-width: 640px) {
     .app { max-width: 1100px; }
-    .tabs, #page-checklist, #page-receipts { width: 100%; max-width: 600px; margin-inline: auto; }
+    .tabs { width: calc(100% - 32px); max-width: 600px; margin-inline: auto; }
+    #page-checklist, #page-receipts { padding-inline: max(16px, calc((100% - 600px) / 2)); }
     /* left: owed to me, right: I owe */
     .money-cols { flex-direction: row-reverse; gap: 40px; align-items: flex-start; }
     .money-col { flex: 1 1 0; }
@@ -339,11 +345,13 @@
 <body>
 <div class="app">
   <div class="tabs" role="tablist" aria-label="Pages">
+    <span class="tab-ind" id="tab-ind" aria-hidden="true"></span>
     <button class="tab" type="button" role="tab" id="tab-checklist" aria-selected="true" aria-controls="page-checklist">Checklist</button>
     <button class="tab" type="button" role="tab" id="tab-owe" aria-selected="false" aria-controls="page-owe">Money</button>
     <button class="tab" type="button" role="tab" id="tab-receipts" aria-selected="false" aria-controls="page-receipts">Receipts</button>
   </div>
 
+  <div class="pager" id="pager">
   <div class="page" id="page-checklist" role="tabpanel" aria-labelledby="tab-checklist">
   <header>
     <div class="head-row">
@@ -422,7 +430,7 @@
   </footer>
   </div>
 
-  <div class="page" id="page-owe" role="tabpanel" aria-labelledby="tab-owe" hidden>
+  <div class="page" id="page-owe" role="tabpanel" aria-labelledby="tab-owe">
     <header>
       <h1>Money</h1>
     </header>
@@ -451,7 +459,7 @@
     </footer>
   </div>
 
-  <div class="page" id="page-receipts" role="tabpanel" aria-labelledby="tab-receipts" hidden>
+  <div class="page" id="page-receipts" role="tabpanel" aria-labelledby="tab-receipts">
     <header>
       <h1>Receipts</h1>
     </header>
@@ -496,6 +504,7 @@
     <footer>
       <span id="rc-sync-status">Saved on this device</span>
     </footer>
+  </div>
   </div>
 </div>
 
@@ -923,38 +932,29 @@
 
   // ---- pages
   const PAGES = ["checklist", "owe", "receipts"];
+  const pager = $("pager");
   let currentPage = "checklist";
-  function showPage(name) {
+  function setCurrent(i) {
+    const name = PAGES[i]; if (!name) return;
+    PAGES.forEach((n, j) => $("tab-" + n).setAttribute("aria-selected", j === i));
     if (name === currentPage) return;
-    const from = PAGES.indexOf(currentPage), to = PAGES.indexOf(name);
-    PAGES.forEach(n => { $("page-" + n).hidden = n !== name; $("tab-" + n).setAttribute("aria-selected", n === name); });
-    const pg = $("page-" + name);
-    pg.classList.remove("slide-left", "slide-right"); void pg.offsetWidth;
-    pg.classList.add(to > from ? "slide-left" : "slide-right");
     currentPage = name;
-    window.scrollTo(0, 0);
     try { history.replaceState(null, "", "#" + name); } catch {}
   }
+  function showPage(name, instant) {
+    const i = PAGES.indexOf(name); if (i < 0) return;
+    pager.scrollTo({ left: i * pager.clientWidth, behavior: instant ? "auto" : "smooth" });
+    setCurrent(i);
+  }
+  // the black tab follows the strip as it moves
+  pager.addEventListener("scroll", () => {
+    const pos = pager.scrollLeft / pager.clientWidth;
+    $("tab-ind").style.transform = "translateX(" + (pos * 100) + "%)";
+    setCurrent(Math.round(pos));
+  }, { passive: true });
+  window.addEventListener("resize", () => showPage(currentPage, true));
   PAGES.forEach(n => { $("tab-" + n).onclick = () => showPage(n); });
-
-  // swipe left for the next page, right for the one before
-  let touch = null;
-  document.addEventListener("touchstart", e => {
-    const t = e.touches[0];
-    const el = e.target;
-    if (e.touches.length > 1 || el.closest("input, textarea, select, .rc-form, #debt-edit-form, #edit-form")) { touch = null; return; }
-    touch = { x: t.clientX, y: t.clientY, time: Date.now() };
-  }, { passive: true });
-  document.addEventListener("touchend", e => {
-    if (!touch) return;
-    const t = e.changedTouches[0], dx = t.clientX - touch.x, dy = t.clientY - touch.y;
-    const quick = Date.now() - touch.time < 700;
-    touch = null;
-    if (!quick || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    const i = PAGES.indexOf(currentPage) + (dx < 0 ? 1 : -1);
-    if (i >= 0 && i < PAGES.length) showPage(PAGES[i]);
-  }, { passive: true });
-  if (PAGES.includes(location.hash.slice(1))) showPage(location.hash.slice(1));
+  if (PAGES.includes(location.hash.slice(1))) requestAnimationFrame(() => showPage(location.hash.slice(1), true));
 
   // ---- money I owe
   const money = n => new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(n);
@@ -982,8 +982,8 @@
   }
   const showPaid = { owe: false, owed: false };
   const SIDES = {
-    owe: { title: "I owe", who: "Who I owe", none: "You don't owe anyone right now", people: n => "to " + n + (n === 1 ? " person" : " people"), empty: "Nothing owed. Add an entry above." },
-    owed: { title: "Owed to me", who: "Who owes me", none: "Nobody owes you right now", people: n => "from " + n + (n === 1 ? " person" : " people"), empty: "Nobody owes you. Add an entry above." },
+    owe: { title: "I owe", who: "Who I owe (optional)", none: "You don't owe anyone right now", count: n => n + (n === 1 ? " open entry" : " open entries"), empty: "Nothing owed. Add an entry above." },
+    owed: { title: "Owed to me", who: "Who owes me (optional)", none: "Nobody owes you right now", count: n => n + (n === 1 ? " open entry" : " open entries"), empty: "Nobody owes you. Add an entry above." },
   };
   const sideOf = d => d.dir === "owed" ? "owed" : "owe";
 
@@ -1003,7 +1003,7 @@
       '<h2 class="side-title">' + L.title + '</h2>' +
       '<div class="owe-total"><span class="big" id="' + side + '-big">$0.00</span><span class="sub" id="' + side + '-sub"></span></div>' +
       '<section><h2>Add</h2><form class="debt-form" data-side="' + side + '" autocomplete="off">' +
-        '<label>' + L.who + '<input type="text" id="' + side + '-who" maxlength="80" required></label>' +
+        '<label>' + L.who + '<input type="text" id="' + side + '-who" maxlength="80"></label>' +
         '<label>How much<input type="number" id="' + side + '-amount" min="0.01" step="0.01" inputmode="decimal" required></label>' +
         '<label class="full">What it\'s for<input type="text" id="' + side + '-what" maxlength="140"></label>' +
         '<label>When it happened<input type="date" id="' + side + '-date" required></label>' +
@@ -1012,7 +1012,7 @@
         '<button class="btn" type="submit">Add</button>' +
       '</form><p class="muted" id="' + side + '-msg" role="status" style="margin-top:8px"></p></section>' +
       '<section><h2>Still open</h2><ul class="debts" id="' + side + '-list"></ul></section>' +
-      '<section id="' + side + '-people-section"><h2>By person</h2><div class="people" id="' + side + '-people"></div></section>' +
+      '<section id="' + side + '-people-section"><h2>By category</h2><div class="people" id="' + side + '-people"></div></section>' +
       '<section id="' + side + '-paid-section"><h2><button type="button" class="linkish" id="' + side + '-toggle-paid" style="font-size:20px;font-weight:700;color:var(--c1);text-decoration:none"></button></h2>' +
         '<ul class="debts" id="' + side + '-paid-list" hidden></ul></section>';
     $(side + "-date").value = keyOf();
@@ -1020,7 +1020,7 @@
 
   function debtEditHTML(d) {
     return '<form class="debt-form debt-edit" id="debt-edit-form" autocomplete="off">' +
-      '<label>' + SIDES[sideOf(d)].who + '<input type="text" id="de-who" maxlength="80" required value="' + esc(d.who) + '"></label>' +
+      '<label>' + SIDES[sideOf(d)].who + '<input type="text" id="de-who" maxlength="80" value="' + esc(d.who || "") + '"></label>' +
       (d.parts
         ? '<label>Total (' + d.parts.length + ' amounts)<input type="number" id="de-amount" value="' + d.amount + '" disabled></label>'
         : '<label>How much<input type="number" id="de-amount" min="0.01" step="0.01" inputmode="decimal" required value="' + d.amount + '"></label>') +
@@ -1034,20 +1034,23 @@
     '</form>';
   }
 
+  // what an entry is called: the person, else what it's for, else its category
+  const debtTitle = d => (d.who || "").trim() || d.what || d.cat || "Amount";
+
   function debtHTML(d) {
     const due = d.paid ? null : dueLabel(d);
     const dates = ["Since " + shortDate(d.date)];
     if (d.paid) dates.push("paid " + shortDate(d.paid));
     else if (d.due) dates.push("due " + shortDate(d.due));
     return '<li class="debt' + (d.paid ? " paid" : "") + '" data-id="' + d.id + '">' +
-      '<button class="check" type="button" data-dact="paid" aria-pressed="' + !!d.paid + '" aria-label="' + (d.paid ? "Mark not paid: " : "Mark paid: ") + esc(d.who) + '">' + CHECK + '</button>' +
-      '<div><button class="debt-who" type="button" data-dact="edit" aria-expanded="' + (oweEditId === d.id) + '">' + esc(d.who) + '</button>' +
-        (d.what ? '<div class="debt-what">' + esc(d.what) + '</div>' : "") +
+      '<button class="check" type="button" data-dact="paid" aria-pressed="' + !!d.paid + '" aria-label="' + (d.paid ? "Mark not paid: " : "Mark paid: ") + esc(debtTitle(d)) + '">' + CHECK + '</button>' +
+      '<div><button class="debt-who" type="button" data-dact="edit" aria-expanded="' + (oweEditId === d.id) + '">' + esc(debtTitle(d)) + '</button>' +
+        (d.what && (d.who || "").trim() ? '<div class="debt-what">' + esc(d.what) + '</div>' : "") +
         '<div class="debt-dates">' + esc(dates.join(" · ")) + '</div>' +
         (d.parts ? '<ul class="parts">' + [...d.parts].sort((a, b) => a.date < b.date ? -1 : 1).map(p =>
           '<li class="part"><span class="part-when">' + esc(shortDate(p.date) + (p.what ? " · " + p.what : "")) + '</span>' +
           '<span class="part-amt">' + money(p.amount) + '</span>' +
-          '<button class="remove" type="button" data-dact="del-part" data-part="' + p.id + '" aria-label="Remove ' + money(p.amount) + ' from ' + esc(d.who) + '">' + CROSS + '</button></li>').join("") + '</ul>' : "") +
+          '<button class="remove" type="button" data-dact="del-part" data-part="' + p.id + '" aria-label="Remove ' + money(p.amount) + ' from ' + esc(debtTitle(d)) + '">' + CROSS + '</button></li>').join("") + '</ul>' : "") +
         (d.paid ? "" : addAmtId === d.id
           ? '<div class="add-amt-form">' +
               '<input type="number" id="aa-amount" min="0.01" step="0.01" inputmode="decimal" placeholder="Amount" aria-label="Amount">' +
@@ -1058,7 +1061,7 @@
           : '<button class="linkish add-amt" type="button" data-dact="add-amt">+ Add amount</button>') +
       '</div>' +
       '<div><span class="debt-amt">' + money(d.amount) + '</span>' + (due ? '<span class="debt-due ' + due.cls + '">' + due.text + '</span>' : "") + '</div>' +
-      '<button class="remove" type="button" data-dact="remove" aria-label="Remove ' + esc(d.who) + '">' + CROSS + '</button>' +
+      '<button class="remove" type="button" data-dact="remove" aria-label="Remove ' + esc(debtTitle(d)) + '">' + CROSS + '</button>' +
       (oweEditId === d.id ? debtEditHTML(d) : "") +
     '</li>';
   }
@@ -1073,11 +1076,11 @@
     });
     const paid = debts.filter(d => d.paid).sort((a, b) => a.paid < b.paid ? 1 : -1);
     const overdue = open.filter(d => d.due && dayDiff(d.due) < 0);
-    const people = {};
-    open.forEach(d => { const k = d.who.trim(); people[k] = (people[k] || 0) + d.amount; });
+    const people = {};  // totals per category
+    open.forEach(d => { const k = state.debtCats.includes(d.cat) ? d.cat : "No category"; people[k] = (people[k] || 0) + d.amount; });
 
     $(side + "-big").textContent = money(open.reduce((a, d) => a + d.amount, 0));
-    const bits = [open.length ? L.people(Object.keys(people).length) : L.none];
+    const bits = [open.length ? L.count(open.length) : L.none];
     if (overdue.length) bits.push(overdue.length + " overdue (" + money(overdue.reduce((a, d) => a + d.amount, 0)) + ")");
     $(side + "-sub").textContent = bits.join(" · ");
     let listHTML = open.length ? "" : '<li class="empty">' + L.empty + '</li>';
@@ -1091,7 +1094,7 @@
     } else listHTML += open.map(debtHTML).join("");
     $(side + "-list").innerHTML = listHTML;
     const names = Object.entries(people).sort((a, b) => b[1] - a[1]);
-    $(side + "-people-section").hidden = names.length < 2;
+    $(side + "-people-section").hidden = !open.some(d => d.cat);
     $(side + "-people").innerHTML = names.map(([n, v]) => '<div class="person"><span>' + esc(n) + '</span><span>' + money(v) + '</span></div>').join("");
     $(side + "-paid-section").hidden = !paid.length;
     $(side + "-toggle-paid").textContent = "Paid (" + paid.length + ") " + (showPaid[side] ? "▾" : "▸");
@@ -1137,7 +1140,7 @@
       e.preventDefault();
       const d = state.debts.find(x => x.id === oweEditId); if (!d) return;
       const amount = d.parts ? d.amount : Math.round(parseFloat($("de-amount").value) * 100) / 100;
-      if (!$("de-who").value.trim() || !(amount > 0)) return;
+      if (!(amount > 0)) return;
       d.who = $("de-who").value.trim(); d.amount = amount; d.what = $("de-what").value.trim();
       if (!d.parts) d.date = $("de-date").value || d.date;
       if ($("de-due").value) d.due = $("de-due").value; else delete d.due;
@@ -1198,14 +1201,14 @@
     e.preventDefault();
     const side = f.dataset.side, v = id => $(side + "-" + id).value;
     const who = v("who").trim(), amount = Math.round(parseFloat(v("amount")) * 100) / 100;
-    if (!who || !(amount > 0)) return;
+    if (!(amount > 0)) return;
     const cat = readCat(side + "-cat");
-    // same person, same side and category, still open: add this as another amount on that entry
-    const same = state.debts.find(x => !x.paid && sideOf(x) === side && x.who.trim().toLowerCase() === who.toLowerCase() && (x.cat || "") === (cat || ""));
+    // same category (and same name, if any) on this side, still open: add this as another amount on that entry
+    const same = (who || cat) && state.debts.find(x => !x.paid && sideOf(x) === side && (x.who || "").trim().toLowerCase() === who.toLowerCase() && (x.cat || "") === (cat || ""));
     if (same) {
       addPart(same, { amount, what: v("what").trim(), date: v("date") || keyOf() });
       if (v("due")) same.due = v("due");
-      $(side + "-msg").textContent = "Added to " + same.who + "'s entry. They now have " + same.parts.length + " amounts, " + money(same.amount) + " in total.";
+      $(side + "-msg").textContent = "Added to " + debtTitle(same) + ". It now has " + same.parts.length + " amounts, " + money(same.amount) + " in total.";
     } else {
       const d = { id: uid(), who, amount, what: v("what").trim(), date: v("date") || keyOf() };
       if (side === "owed") d.dir = "owed";
