@@ -230,7 +230,7 @@
   .add-amt-form { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
   .add-amt-form input { width: 100%; }
   .add-amt-form .actions { grid-column: 1 / -1; }
-  .debt-amt { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .debt-amt { display: block; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
   .debt-due { display: block; font-size: 12px; font-weight: 600; text-align: right; margin-top: 4px; white-space: nowrap; }
   .debt-due.overdue { background: var(--c1); color: var(--c5); padding: 1px 6px; }
   .debt-due.soon { color: var(--c1); }
@@ -271,9 +271,9 @@
   .rc-stat strong { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
   .rc-stats-note { font-size: 12px; color: var(--c3); margin: 6px 0 0; }
   .soon-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--c4); }
-  .soon { display: grid; grid-template-columns: 92px 1fr auto; gap: 12px; align-items: center; width: 100%; padding: 12px 0; font: inherit; color: var(--c1);
+  .soon-row { display: grid; grid-template-columns: 92px 1fr auto; gap: 12px; align-items: center; width: 100%; padding: 12px 0; font: inherit; color: var(--c1);
     background: none; border: 0; border-bottom: 1px solid var(--c4); text-align: left; cursor: pointer; }
-  .soon:hover { background: var(--c4); }
+  .soon-row:hover { background: var(--c4); }
   .soon-days { font-size: 12px; font-weight: 600; padding: 2px 6px; text-align: center; border: 1px solid var(--c1); }
   .soon-days.urgent { background: var(--c1); color: var(--c5); }
   .soon-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -315,6 +315,13 @@
     .money-col { flex: 1 1 0; }
   }
 
+  /* every box the same height and lined up on the left; iPhone date and time boxes otherwise ignore the width and sit taller */
+  input[type="text"], input[type="number"], input[type="date"], input[type="time"], select.cat-select {
+    height: 46px; font-size: 16px; line-height: 1.2; padding-block: 0; padding-inline: 12px; margin: 0; }
+  input[type="date"], input[type="time"] { -webkit-appearance: none; appearance: none; display: block; width: 100%; min-width: 0; max-width: 100%; text-align: left; }
+  input::-webkit-date-and-time-value { text-align: left; margin: 0; }
+  .debt-form label, .rc-form label, .rc-label, .fields label { min-width: 0; }
+
   button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
   html { overflow-x: clip; }
@@ -331,7 +338,7 @@
     .pat { grid-template-columns: 80px 1fr 44px; }
     .debt-form { grid-template-columns: 1fr; }
     .rc-item { grid-template-columns: 1fr 1fr 32px; }
-    .soon { grid-template-columns: 84px 1fr auto; gap: 10px; }
+    .soon-row { grid-template-columns: 84px 1fr auto; gap: 10px; }
     .rc-stat { padding: 8px; }
     .rc-stat strong { font-size: 15px; }
     .rc-item [data-f="name"] { grid-column: 1 / -1; }
@@ -1268,7 +1275,7 @@
       const first = (r.items || [])[0];
       const name = first ? first.name : r.store;
       const more = (r.items || []).length > 1 ? " + " + ((r.items || []).length - 1) + " more" : "";
-      return '<li><button type="button" class="soon" data-soon="' + r.id + '">' +
+      return '<li><button type="button" class="soon-row" data-soon="' + r.id + '">' +
         '<span class="soon-days' + (n <= 7 ? " urgent" : "") + '">' + (n === 0 ? "Today" : n === 1 ? "1 day left" : n + " days left") + '</span>' +
         '<span class="soon-name">' + esc(name) + '<span class="soon-sub">' + esc((r.store || "") + more + " · by " + shortDate(r.returnBy)) + '</span></span>' +
         '<span class="soon-amt">' + (r.total != null ? money(r.total) : "") + '</span>' +
