@@ -191,6 +191,10 @@
   .tab { font: inherit; font-size: 15px; font-weight: 600; padding: 10px; border: 0; background: var(--c5); color: var(--c1); cursor: pointer; }
   .tab[aria-selected="true"] { background: var(--c1); color: var(--c5); }
   .page { display: flex; flex-direction: column; gap: 36px; }
+  .page.slide-left { animation: slide-in-left .22s ease-out; }
+  .page.slide-right { animation: slide-in-right .22s ease-out; }
+  @keyframes slide-in-left { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
+  @keyframes slide-in-right { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: none; } }
 
   /* money I owe */
   .owe-total { display: flex; flex-direction: column; gap: 2px; }
@@ -297,7 +301,8 @@
   }
 
   button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  html { overflow-x: clip; }
   @media (max-width: 460px) {
     h1 { font-size: 24px; }
     .rings { gap: 8px; }
@@ -909,11 +914,37 @@
 
   // ---- pages
   const PAGES = ["checklist", "owe", "receipts"];
+  let currentPage = "checklist";
   function showPage(name) {
+    if (name === currentPage) return;
+    const from = PAGES.indexOf(currentPage), to = PAGES.indexOf(name);
     PAGES.forEach(n => { $("page-" + n).hidden = n !== name; $("tab-" + n).setAttribute("aria-selected", n === name); });
+    const pg = $("page-" + name);
+    pg.classList.remove("slide-left", "slide-right"); void pg.offsetWidth;
+    pg.classList.add(to > from ? "slide-left" : "slide-right");
+    currentPage = name;
+    window.scrollTo(0, 0);
     try { history.replaceState(null, "", "#" + name); } catch {}
   }
   PAGES.forEach(n => { $("tab-" + n).onclick = () => showPage(n); });
+
+  // swipe left for the next page, right for the one before
+  let touch = null;
+  document.addEventListener("touchstart", e => {
+    const t = e.touches[0];
+    const el = e.target;
+    if (e.touches.length > 1 || el.closest("input, textarea, select, .rc-form, #debt-edit-form, #edit-form")) { touch = null; return; }
+    touch = { x: t.clientX, y: t.clientY, time: Date.now() };
+  }, { passive: true });
+  document.addEventListener("touchend", e => {
+    if (!touch) return;
+    const t = e.changedTouches[0], dx = t.clientX - touch.x, dy = t.clientY - touch.y;
+    const quick = Date.now() - touch.time < 700;
+    touch = null;
+    if (!quick || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const i = PAGES.indexOf(currentPage) + (dx < 0 ? 1 : -1);
+    if (i >= 0 && i < PAGES.length) showPage(PAGES[i]);
+  }, { passive: true });
   if (PAGES.includes(location.hash.slice(1))) showPage(location.hash.slice(1));
 
   // ---- money I owe
