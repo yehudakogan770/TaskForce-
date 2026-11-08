@@ -24,11 +24,26 @@
     --c5: #ffffff;  /* paper */
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --mono: var(--font);
+    --accent: var(--c1);     /* buttons and highlights */
+    --on-accent: var(--c5);
+    --ring1: var(--c1); --ring2: var(--c2); --ring3: var(--c3);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) { --c1: #ffffff; --c2: #c4c4c4; --c3: #7a7a7a; --c4: #2e2e2e; --c5: #000000; color-scheme: dark; }
   }
   :root[data-theme="dark"] { --c1: #ffffff; --c2: #c4c4c4; --c3: #7a7a7a; --c4: #2e2e2e; --c5: #000000; color-scheme: dark; }
+
+  /* Looks, picked at the bottom of each page */
+  :root[data-look="color"] { --c1: #10131a; --c2: #3d4555; --c3: #8a93a6; --c4: #e2e7f1; --c5: #ffffff;
+    --accent: #2f5bea; --on-accent: #ffffff; --ring1: #2f5bea; --ring2: #f0643c; --ring3: #18a058; }
+  @media (prefers-color-scheme: dark) {
+    :root[data-look="color"]:not([data-theme="light"]) { --c1: #f2f4f8; --c2: #c3c9d6; --c3: #7a8396; --c4: #262c38; --c5: #0d1017;
+      --accent: #6b8cff; --on-accent: #0d1017; --ring1: #6b8cff; --ring2: #ff8a65; --ring3: #3ecf8e; }
+  }
+  :root[data-look="color"][data-theme="dark"] { --c1: #f2f4f8; --c2: #c3c9d6; --c3: #7a8396; --c4: #262c38; --c5: #0d1017;
+    --accent: #6b8cff; --on-accent: #0d1017; --ring1: #6b8cff; --ring2: #ff8a65; --ring3: #3ecf8e; }
+  :root[data-look="serif"] { --font: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif; }
+  :root[data-look="rounded"] { --font: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Hiragino Maru Gothic ProN", -apple-system, sans-serif; }
 
   html { -webkit-text-size-adjust: 100%; }
   * { box-sizing: border-box; border-radius: 0; }
@@ -38,7 +53,7 @@
   html, body { height: 100%; }
   body {
     background: var(--c5); color: var(--c1);
-    font-family: var(--font); font-size: 16px; line-height: 1.45;
+    font-family: var(--font); font-size: 15px; line-height: 1.45;
     margin: 0; overflow: hidden; display: flex; flex-direction: column;
     padding-top: max(12px, env(safe-area-inset-top, 0px));
   }
@@ -46,15 +61,15 @@
 
   header { display: flex; flex-direction: column; gap: 4px; }
   .head-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
-  h1 { margin: 0; font-size: 28px; font-weight: 700; line-height: 1.2; }
-  .clock { font-size: 17px; color: var(--c3); font-variant-numeric: tabular-nums; }
-  .streak { font-size: 15px; color: var(--c2); }
+  h1 { margin: 0; font-size: 25px; font-weight: 700; line-height: 1.2; }
+  .clock { font-size: 15px; color: var(--c3); font-variant-numeric: tabular-nums; }
+  .streak { font-size: 14px; color: var(--c2); }
   .streak strong { color: var(--c1); font-variant-numeric: tabular-nums; }
 
-  h2 { margin: 0 0 12px; font-size: 20px; font-weight: 700; color: var(--c1); }
+  h2 { margin: 0 0 12px; font-size: 18px; font-weight: 700; color: var(--c1); }
   .muted { color: var(--c3); font-size: 14px; margin: 0; }
 
-  .banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px; background: var(--c1); color: var(--c5); }
+  .banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px; background: var(--accent); color: var(--on-accent); }
   .banner span { flex: 1 1 200px; font-weight: 500; }
   .banner .btn { background: var(--c5); color: var(--c1); border-color: var(--c5); padding: 6px 14px; font-size: 14px; }
   .banner .btn.ghost { background: transparent; color: var(--c5); border-color: var(--c3); }
@@ -64,7 +79,7 @@
   .ring svg { width: 100%; max-width: 120px; height: auto; display: block; }
   .ring .track { stroke: var(--c4); }
   .ring .arc { transition: stroke-dashoffset .4s ease; }
-  .ring .pct { font-family: var(--font); font-size: 20px; font-weight: 600; fill: var(--c1); }
+  .ring .pct { font-family: var(--font); font-size: 18px; font-weight: 600; fill: var(--c1); }
   .ring-name { font-size: 14px; font-weight: 600; }
   .ring-count { font-size: 13px; color: var(--c3); font-variant-numeric: tabular-nums; }
 
@@ -83,7 +98,7 @@
   tr.now td { background: var(--c4); }
   tr.now td:first-child { padding-left: 8px; }
   tr.now td:last-child { padding-right: 8px; }
-  .col-time { width: 76px; font-size: 15px; color: var(--c2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .col-time { width: 76px; font-size: 14px; color: var(--c2); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .col-time .end { display: block; font-size: 12px; color: var(--c3); }
   .col-check { width: 40px; }
   .col-status { width: 76px; font-size: 14px; text-align: right; white-space: nowrap; }
@@ -97,7 +112,7 @@
   .check { width: 22px; height: 22px; border: 2px solid var(--c1); background: var(--c5); padding: 0; cursor: pointer;
     display: grid; place-items: center; color: var(--c5); }
   .check svg { width: 14px; height: 14px; opacity: 0; }
-  tr.done .check { background: var(--c3); border-color: var(--c3); }
+  tr.done .check { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
   tr.done .check svg { opacity: 1; }
   tr.skipped .check, tr.other .check { border-color: var(--c4); cursor: default; }
 
@@ -136,15 +151,15 @@
   .chip { font: inherit; font-size: 13px; font-weight: 500; width: 34px; height: 34px; padding: 0; cursor: pointer;
     border: 1px solid var(--c3); background: var(--c5); color: var(--c2); }
   .chip.wide { width: auto; padding: 0 12px; margin-left: 8px; }
-  .chip[aria-pressed="true"] { background: var(--c1); border-color: var(--c1); color: var(--c5); }
+  .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
   form.add { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
   .add-row { display: grid; grid-template-columns: 150px 1fr auto; gap: 8px; }
   .add-more { display: flex; flex-direction: column; gap: 10px; }
   .add-more .fields label { flex: 0 0 150px; }
-  .btn { font: inherit; font-weight: 600; font-size: 15px; border: 2px solid var(--c1); padding: 9px 20px; cursor: pointer;
-    background: var(--c1); color: var(--c5); }
-  .btn:hover { background: var(--c2); border-color: var(--c2); }
+  .btn { font: inherit; font-weight: 600; font-size: 14px; border: 2px solid var(--accent); padding: 8px 18px; cursor: pointer;
+    background: var(--accent); color: var(--on-accent); }
+  .btn:hover { opacity: .88; }
   .btn.ghost { background: var(--c5); color: var(--c1); border-width: 1px; padding: 6px 12px; font-size: 13px; font-weight: 500; }
   .btn.ghost:hover { background: var(--c4); }
 
@@ -173,10 +188,10 @@
   .pats { display: flex; flex-direction: column; gap: 10px; }
   .pat { display: grid; grid-template-columns: 90px 1fr 48px; gap: 12px; align-items: center; font-size: 14px; }
   .pbar { height: 12px; background: var(--c4); }
-  .pbar i { display: block; height: 100%; background: var(--c1); }
+  .pbar i { display: block; height: 100%; background: var(--accent); }
   .pv { font-size: 14px; text-align: right; font-variant-numeric: tabular-nums; }
 
-  details.tpl summary { cursor: pointer; font-size: 16px; font-weight: 600; color: var(--c1); }
+  details.tpl summary { cursor: pointer; font-size: 15px; font-weight: 600; color: var(--c1); }
   .tpl-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
   .tpl-list .btn { text-align: left; display: flex; justify-content: space-between; gap: 12px; }
   .tpl-list .btn span { color: var(--c3); font-weight: 400; }
@@ -187,12 +202,13 @@
   footer button { font: inherit; color: var(--c2); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 
   /* page tabs */
-  .tabs { position: relative; isolation: isolate; background: var(--c5); flex: none; display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--c1);
+  .tabs { position: relative; background: var(--c5); flex: none; display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--accent);
     margin-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
-  .tab-ind { position: absolute; inset: 0 auto 0 0; width: calc(100% / 3); background: var(--c1); will-change: transform; }
-  /* white text with "difference" shows dark on the light part and light on the black block, even halfway through a swipe */
-  .tab { position: relative; font: inherit; font-size: 15px; font-weight: 600; padding: 10px; border: 0; background: transparent; color: #fff;
-    mix-blend-mode: difference; cursor: pointer; }
+  /* the moving block carries its own copy of the labels, shifted the other way, so every label reads right even halfway through a swipe */
+  .tab-ind { position: absolute; inset: 0 auto 0 0; width: calc(100% / 3); background: var(--accent); overflow: hidden; z-index: 1; pointer-events: none; will-change: transform; }
+  .tab-ind-labels { display: grid; grid-template-columns: repeat(3, 1fr); width: 300%; height: 100%; align-items: center; text-align: center;
+    font-size: 14px; font-weight: 600; color: var(--on-accent); will-change: transform; }
+  .tab { position: relative; font: inherit; font-size: 14px; font-weight: 600; padding: 9px; border: 0; background: transparent; color: var(--c1); cursor: pointer; }
   .pager { flex: 1; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory;
     overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .pager::-webkit-scrollbar { display: none; }
@@ -203,8 +219,8 @@
 
   /* money I owe */
   .owe-total { display: flex; flex-direction: column; gap: 2px; }
-  .owe-total .big { font-size: 40px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .owe-total .sub { font-size: 15px; color: var(--c2); }
+  .owe-total .big { font-size: 34px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .owe-total .sub { font-size: 14px; color: var(--c2); }
   .debt-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .debt-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--c2); min-width: 0; }
   .debt-form .full { grid-column: 1 / -1; }
@@ -216,11 +232,11 @@
   .debts { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--c4); }
   .debt { display: grid; grid-template-columns: 34px 1fr auto 32px; gap: 10px; align-items: start; padding: 14px 0; border-bottom: 1px solid var(--c4); }
   .debt .check { margin-top: 2px; }
-  .debt.paid .check { background: var(--c3); border-color: var(--c3); }
+  .debt.paid .check { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
   .debt.paid .check svg { opacity: 1; }
   .debt-who { font: inherit; font-weight: 600; color: var(--c1); background: none; border: 0; padding: 0; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
   .debt-who:hover { text-decoration: underline; text-underline-offset: 3px; }
-  .debt-what { font-size: 15px; color: var(--c2); overflow-wrap: anywhere; }
+  .debt-what { font-size: 14px; color: var(--c2); overflow-wrap: anywhere; }
   .debt-dates { font-size: 13px; color: var(--c3); }
   .parts { list-style: none; margin: 6px 0 0; padding: 0; border-top: 1px solid var(--c4); }
   .part { display: grid; grid-template-columns: 1fr auto 28px; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--c4); font-size: 14px; }
@@ -233,18 +249,18 @@
   .add-amt-form .actions { grid-column: 1 / -1; }
   .debt-amt { display: block; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
   .debt-due { display: block; font-size: 12px; font-weight: 600; text-align: right; margin-top: 4px; white-space: nowrap; }
-  .debt-due.overdue { background: var(--c1); color: var(--c5); padding: 1px 6px; }
+  .debt-due.overdue { background: var(--accent); color: var(--on-accent); padding: 1px 6px; }
   .debt-due.soon { color: var(--c1); }
   .debt-due.later { color: var(--c3); font-weight: 400; }
   .debt.paid .debt-who, .debt.paid .debt-amt { color: var(--c3); text-decoration: line-through; }
   .debt-edit { grid-column: 1 / -1; padding-top: 6px; }
   .people { display: flex; flex-direction: column; }
-  .person { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--c4); font-size: 15px; }
+  .person { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--c4); font-size: 14px; }
   .person span:last-child { font-weight: 600; font-variant-numeric: tabular-nums; }
   select.cat-select { font: inherit; color: var(--c1); background: var(--c5); border: 1px solid var(--c3); padding: 10px 12px; width: 100%; min-width: 0; }
   .debt-cat { border-bottom: 1px solid var(--c4); }
   .cat-toggle { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; padding: 14px 0; border: 0; background: none;
-    font: inherit; font-size: 16px; font-weight: 700; color: var(--c1); text-align: left; cursor: pointer; }
+    font: inherit; font-size: 15px; font-weight: 700; color: var(--c1); text-align: left; cursor: pointer; }
   .cat-toggle > span:last-child { font-variant-numeric: tabular-nums; }
   .cat-name { display: flex; align-items: baseline; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
   .chev { width: 12px; flex: none; }
@@ -270,7 +286,7 @@
   .rc-status { font-size: 14px; color: var(--c1); margin: 10px 0 0; }
   .rc-status.err { font-weight: 600; }
   .rc-form { display: flex; flex-direction: column; gap: 14px; padding: 16px; border: 1px solid var(--c1); }
-  .rc-form h3 { margin: 0; font-size: 17px; }
+  .rc-form h3 { margin: 0; font-size: 16px; }
   .rc-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--c2); min-width: 0; }
   .rc-form input { width: 100%; }
   .rc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -281,14 +297,14 @@
   .rc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .rc-stat { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; background: var(--c4); min-width: 0; }
   .rc-stat span { font-size: 12px; color: var(--c2); }
-  .rc-stat strong { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .rc-stat strong { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
   .rc-stats-note { font-size: 12px; color: var(--c3); margin: 6px 0 0; }
   .soon-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--c4); }
   .soon-row { display: grid; grid-template-columns: 92px 1fr auto; gap: 12px; align-items: center; width: 100%; padding: 12px 0; font: inherit; color: var(--c1);
     background: none; border: 0; border-bottom: 1px solid var(--c4); text-align: left; cursor: pointer; }
   .soon-row:hover { background: var(--c4); }
   .soon-days { font-size: 12px; font-weight: 600; padding: 2px 6px; text-align: center; border: 1px solid var(--c1); }
-  .soon-days.urgent { background: var(--c1); color: var(--c5); }
+  .soon-days.urgent { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
   .soon-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .soon-sub { display: block; font-size: 13px; color: var(--c3); }
   .soon-amt { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -320,7 +336,7 @@
 
   .money-cols { display: flex; flex-direction: column; gap: 56px; }
   .money-col { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
-  .money-col > h2.side-title { font-size: 24px; margin: 0; padding-bottom: 8px; border-bottom: 3px solid var(--c1); }
+  .money-col > h2.side-title { font-size: 21px; margin: 0; padding-bottom: 8px; border-bottom: 3px solid var(--c1); }
   @media (orientation: landscape) and (min-width: 640px) {
     .app { max-width: 1100px; }
     .tabs { width: calc(100% - 32px); max-width: 600px; margin-inline: auto; }
@@ -340,14 +356,21 @@
   input::-webkit-datetime-edit { line-height: 44px; padding: 0; }
   .debt-form label, .rc-form label, .rc-label, .fields label { min-width: 0; }
 
+  .looks { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; width: 100%; }
+  .looks span { margin-right: 4px; }
+  .look { font: inherit; font-size: 13px; padding: 5px 10px; border: 1px solid var(--c3); background: var(--c5); color: var(--c1); cursor: pointer; }
+  .look[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .look[data-look="serif"] { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; }
+  .look[data-look="rounded"] { font-family: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", -apple-system, sans-serif; }
+
   button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
   html { overflow-x: clip; }
   @media (max-width: 460px) {
-    h1 { font-size: 24px; }
+    h1 { font-size: 22px; }
     .rings { gap: 8px; }
     .ring { padding: 10px 4px; }
-    .ring .pct { font-size: 22px; }
+    .ring .pct { font-size: 19px; }
     .col-time { width: 62px; font-size: 13px; }
     .col-status { width: 60px; font-size: 12px; }
     .add-row { grid-template-columns: 1fr auto; }
@@ -358,19 +381,19 @@
     .rc-item { grid-template-columns: 1fr 1fr 32px; }
     .soon-row { grid-template-columns: 84px 1fr auto; gap: 10px; }
     .rc-stat { padding: 8px; }
-    .rc-stat strong { font-size: 15px; }
+    .rc-stat strong { font-size: 14px; }
     .rc-item [data-f="name"] { grid-column: 1 / -1; }
     .rc-item-head { display: none; }
     .rc-item + .rc-item { border-top: 1px solid var(--c4); padding-top: 8px; }
     .tab { font-size: 14px; padding: 10px 4px; }
-    .owe-total .big { font-size: 34px; }
+    .owe-total .big { font-size: 30px; }
   }
 </style>
 </head>
 <body>
 <div class="app">
   <div class="tabs" role="tablist" aria-label="Pages">
-    <span class="tab-ind" id="tab-ind" aria-hidden="true"></span>
+    <span class="tab-ind" id="tab-ind" aria-hidden="true"><span class="tab-ind-labels" id="tab-ind-labels"><span>Checklist</span><span>Money</span><span>Receipts</span></span></span>
     <button class="tab" type="button" role="tab" id="tab-checklist" aria-selected="true" aria-controls="page-checklist">Checklist</button>
     <button class="tab" type="button" role="tab" id="tab-owe" aria-selected="false" aria-controls="page-owe">Money</button>
     <button class="tab" type="button" role="tab" id="tab-receipts" aria-selected="false" aria-controls="page-receipts">Receipts</button>
@@ -447,6 +470,7 @@
   </details>
 
   <footer>
+    <div class="looks" role="group" aria-label="Look"></div>
     <span id="sync-status">Saved on this device</span>
     <div class="links">
       <button type="button" id="sound-toggle">Reminder sound: off</button>
@@ -480,6 +504,7 @@
     </section>
 
     <footer>
+      <div class="looks" role="group" aria-label="Look"></div>
       <span id="owe-sync-status">Saved on this device</span>
     </footer>
   </div>
@@ -527,6 +552,7 @@
     </section>
 
     <footer>
+      <div class="looks" role="group" aria-label="Look"></div>
       <span id="rc-sync-status">Saved on this device</span>
     </footer>
   </div>
@@ -678,9 +704,9 @@
     const sum = keys => keys.reduce((a, k) => { const i = dayInfo(k); return { done: a.done + i.done, planned: a.planned + i.planned }; }, { done: 0, planned: 0 });
     const weekStart = new Date(today); weekStart.setDate(today.getDate() - today.getDay());
     const rings = [
-      { name: "Today", color: "var(--c1)", ...sum([keyOf(today)]) },
-      { name: "This week", color: "var(--c2)", ...sum(span(weekStart)) },
-      { name: "This month", color: "var(--c3)", ...sum(span(new Date(today.getFullYear(), today.getMonth(), 1))) },
+      { name: "Today", color: "var(--ring1)", ...sum([keyOf(today)]) },
+      { name: "This week", color: "var(--ring2)", ...sum(span(weekStart)) },
+      { name: "This month", color: "var(--ring3)", ...sum(span(new Date(today.getFullYear(), today.getMonth(), 1))) },
     ];
     const R = 40, C = 2 * Math.PI * R;
     $("rings").innerHTML = rings.map(r => {
@@ -972,12 +998,23 @@
     setCurrent(i);
   }
   // the black tab follows the strip as it moves
-  pager.addEventListener("scroll", () => {
-    const pos = pager.scrollLeft / pager.clientWidth;
-    $("tab-ind").style.transform = "translateX(" + (pos * 100) + "%)";
-    setCurrent(Math.round(pos));
-  }, { passive: true });
-  window.addEventListener("resize", () => showPage(currentPage, true));
+  function placeTabBlock() {
+    const pos = pager.scrollLeft / pager.clientWidth, last = PAGES.length - 1;
+    const tw = $("tab-ind").parentElement.clientWidth / PAGES.length;
+    // pulled past the first or last page (the iPhone bounce): the block shrinks inside its own tab instead of sliding out of the bar
+    const over = Math.min(0.9, pos < 0 ? -pos : pos > last ? pos - last : 0);
+    const at = Math.min(Math.max(pos, 0), last);
+    const left = at * tw + (pos < 0 ? over * tw : 0), width = tw * (1 - over);
+    const ind = $("tab-ind"), labels = $("tab-ind-labels");
+    ind.style.width = width + "px";
+    ind.style.transform = "translateX(" + left + "px)";
+    labels.style.width = tw * PAGES.length + "px";
+    labels.style.transform = "translateX(" + (-left) + "px)";
+    setCurrent(Math.round(at));
+  }
+  pager.addEventListener("scroll", placeTabBlock, { passive: true });
+  window.addEventListener("resize", () => { showPage(currentPage, true); placeTabBlock(); });
+  requestAnimationFrame(placeTabBlock);
   PAGES.forEach(n => { $("tab-" + n).onclick = () => showPage(n); });
   if (PAGES.includes(location.hash.slice(1))) requestAnimationFrame(() => showPage(location.hash.slice(1), true));
 
@@ -1735,6 +1772,20 @@
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && $("rc-text").value.trim()) readReceipt(null, $("rc-text").value.trim());
   });
 
+  // ---- look: Classic, Color, Serif or Rounded, saved with everything else
+  const LOOKS = [["classic", "Classic"], ["color", "Color"], ["serif", "Serif"], ["rounded", "Rounded"]];
+  function applyLook() {
+    const look = state.prefs.look || "classic";
+    if (look === "classic") delete document.documentElement.dataset.look; else document.documentElement.dataset.look = look;
+    document.querySelectorAll(".looks").forEach(el => {
+      el.innerHTML = "<span>Look</span>" + LOOKS.map(([k, n]) => '<button type="button" class="look" data-look="' + k + '" aria-pressed="' + (k === look) + '">' + n + '</button>').join("");
+    });
+  }
+  document.addEventListener("click", e => {
+    const b = e.target.closest(".look"); if (!b) return;
+    state.prefs.look = b.dataset.look; applyLook(); commit();
+  });
+
   // ---- reminders: a banner (and an optional sound) when a task's start time arrives while the page is open
   let audio = null, lastCheck = nowMinutes(), bannerId = null;
   function renderSoundBtn() { $("sound-toggle").textContent = "Reminder sound: " + (state.prefs.sound ? "on" : "off"); }
@@ -1798,7 +1849,7 @@
     catch { setSync("Saved on this device only"); }
   }
 
-  prune(); saveLocal(); renderSoundBtn(); render();
+  prune(); saveLocal(); renderSoundBtn(); applyLook(); render();
   setInterval(() => { checkReminders(); if (!editingId && !oweEditId && !refundOpenId && !addAmtId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
 
   (async () => {
@@ -1813,7 +1864,7 @@
       const data = snap.exists ? snap.data() : null;
       if (data && Array.isArray(data.items)) {
         state = normalize(JSON.parse(JSON.stringify(data)));
-        prune(); saveLocal(); renderSoundBtn(); render();
+        prune(); saveLocal(); renderSoundBtn(); applyLook(); render();
         setSync("Saved to your account");
       } else {
         await pushRemote();
