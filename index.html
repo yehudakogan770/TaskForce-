@@ -285,6 +285,8 @@
   .add-amt-form input { width: 100%; }
   .add-amt-form .actions { grid-column: 1 / -1; }
   .entry-links { display: flex; gap: 16px; flex-wrap: wrap; }
+  .req-row { padding: 8px 0 10px; border-bottom: 1px solid var(--c4); font-size: 13.5px; }
+  .debt-sub + .req-row { padding-left: 14px; }
   .inv-form { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; padding: 12px; border: 1px solid var(--c4); }
   .inv-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--c2); }
   .inv-form label.tick { flex-direction: row; align-items: center; gap: 8px; font-size: 13.5px; color: var(--c1); }
@@ -802,8 +804,22 @@
       (payBy ? "Could you please send payment by " + longDate(payBy) + "?" : "Could you please send payment when you get a chance?") +
       "\n\nThank you!";
   }
-  function invoiceFormHTML(d) {
-    const from = state.prefs.myName || "", to = (d.who || "").trim();
+  function invoiceDebts(key) {
+    const open = state.debts.filter(d => !d.paid && sideOf(d) === "owed");
+    if (key.startsWith("cat:")) return open.filter(d => validCat(d) === key.slice(4));
+    if (key.startsWith("sub:")) { const [c, sub] = key.slice(4).split("|"); return open.filter(d => validCat(d) === c && validSub(d) === sub); }
+    return state.debts.filter(d => d.id === key);
+  }
+  function invoiceTarget(key) {
+    const list = invoiceDebts(key);
+    const names = [...new Set(list.map(d => (d.who || "").trim()).filter(Boolean))];
+    const label = key.startsWith("cat:") ? key.slice(4) : key.startsWith("sub:") ? key.slice(4).split("|")[0] : "";  // the category is usually who pays
+    const dues = list.map(d => d.due).filter(Boolean).sort();
+    return { list, to: names.length === 1 ? names[0] : label || names[0] || "", due: dues[0] || "" };
+  }
+  function invoiceFormHTML(key) {
+    const t = invoiceTarget(key), d = { due: t.due };
+    const from = state.prefs.myName || "", to = t.to;
     return '<div class="inv-form" id="inv-form">' +
       '<label>Your name (who it\'s from)<input type="text" id="inv-from" maxlength="60" value="' + esc(from) + '"></label>' +
       '<label>Who it\'s to<input type="text" id="inv-to" maxlength="60" value="' + esc(to) + '"></label>' +
@@ -818,13 +834,22 @@
       '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-dact="inv-save">Save or send</button></div></div>' +
     '</div>';
   }
-  function invoiceData(d) {
+  function invoiceData(key) {
     const payOn = $("inv-payby-on").checked && $("inv-payby").value;
-    const rows = (d.parts ? [...d.parts].sort((a, b) => a.date < b.date ? -1 : 1) : [{ amount: d.amount, date: d.date, what: d.what }])
-      .map(p => ({ date: p.date, what: p.what || d.what || d.sub || d.cat || "Amount", amount: p.amount }));
+    const list = invoiceDebts(key), wholeCat = key.startsWith("cat:");
+    const rows = [];
+    for (const d of list) {
+      const what = p => {
+        const base = p.what || d.what || d.sub || d.cat || "Amount";
+        // on a whole-category request, say which subcategory each line belongs to
+        return wholeCat && validSub(d) && base.toLowerCase() !== validSub(d).toLowerCase() ? validSub(d) + ": " + base : base;
+      };
+      for (const p of (d.parts || [{ amount: d.amount, date: d.date, what: d.what }])) rows.push({ date: p.date, what: what(p), amount: p.amount });
+    }
+    rows.sort((a, b) => a.date < b.date ? -1 : 1);
     return { from: $("inv-from").value.trim(), to: $("inv-to").value.trim(), showDates: $("inv-dates").checked,
       payBy: payOn ? $("inv-payby").value : "", msg: $("inv-msg").value.trim(), notes: $("inv-notes").value.trim(),
-      rows, total: d.amount, issued: keyOf() };
+      rows, total: round2(list.reduce((a, d) => a + d.amount, 0)), issued: keyOf() };
   }
 
   // draws the page; style picks one of the five looks
@@ -1046,8 +1071,8 @@
               '<div class="actions"><button class="btn" type="button" data-dact="add-amt-save">Add amount</button>' +
               '<button class="btn ghost" type="button" data-dact="add-amt-cancel">Cancel</button></div></div>'
           : '<div class="entry-links"><button class="linkish add-amt" type="button" data-dact="add-amt">+ Add amount</button>' +
-            (sideOf(d) === "owed" ? '<button class="linkish add-amt" type="button" data-dact="invoice">Payment request</button>' : "") + '</div>') +
-        (invoiceId === d.id ? invoiceFormHTML(d) : "") +
+            (sideOf(d) === "owed" && !validCat(d) ? '<button class="linkish add-amt" type="button" data-inv-key="' + d.id + '">Payment request</button>' : "") + '</div>') +
+        (invoiceId === d.id ? invoiceFormHTML(d.id) : "") +
       '</div>' +
       '<div><span class="debt-amt">' + money(d.amount) + '</span>' + (due ? '<span class="debt-due ' + due.cls + '">' + due.text + '</span>' : "") + '</div>' +
       '<button class="remove" type="button" data-dact="remove" aria-label="Remove ' + esc(debtTitle(d)) + '">' + CROSS + '</button>' +
@@ -1085,8 +1110,12 @@
           ' <span class="cat-count">' + g.all.length + (g.all.length === 1 ? " entry" : " entries") + '</span></span>' +
           '<span>' + money(sum(g.all)) + '</span></button></li>';
         if (isOpen) {
+          const req = k => side === "owed" ? '<li class="req-row"><button class="linkish" type="button" data-inv-key="' + esc(k) + '">Payment request for ' +
+            esc(k.startsWith("cat:") ? "all of " + g.cat : k.slice(4).split("|")[1]) + '</button>' + (invoiceId === k ? invoiceFormHTML(k) : "") + '</li>' : "";
+          listHTML += req("cat:" + g.cat);
           listHTML += g.plain.map(debtHTML).join("");
-          for (const sg of g.subs) listHTML += '<li class="debt-sub"><span>' + esc(sg.sub) + '</span><span>' + money(sum(sg.list)) + '</span></li>' + sg.list.map(debtHTML).join("");
+          for (const sg of g.subs) listHTML += '<li class="debt-sub"><span>' + esc(sg.sub) + '</span><span>' + money(sum(sg.list)) + '</span></li>' +
+            req("sub:" + g.cat + "|" + sg.sub) + sg.list.map(debtHTML).join("");
         }
       }
       for (const g of groups) {
@@ -1243,25 +1272,30 @@
     if (ct) { const k = ct.dataset.catToggle; openCats.has(k) ? openCats.delete(k) : openCats.add(k); renderOwe(); return; }
     const tp = e.target.closest('[id$="-toggle-paid"]');
     if (tp) { const side = tp.id.split("-")[0]; showPaid[side] = !showPaid[side]; renderOwe(); return; }
+    const ik = e.target.closest("[data-inv-key]");
+    if (ik) { const k = ik.dataset.invKey; invoiceId = invoiceId === k ? null : k; invMsgEdited = false; invBlob = null; renderOwe(); return; }
     const b = e.target.closest("[data-dact]"); if (!b) return;
-    const li = b.closest("li[data-id]"); if (!li) return;
-    const id = li.dataset.id, d = state.debts.find(x => x.id === id); if (!d) return;
-    const act = b.dataset.dact;
-    if (act === "paid") { if (d.paid) delete d.paid; else d.paid = keyOf(); commit(); }
-    else if (act === "add-amt") { addAmtId = id; renderOwe(); $("aa-amount")?.focus(); }
-    else if (act === "invoice") { invoiceId = invoiceId === id ? null : id; invMsgEdited = false; invBlob = null; renderOwe(); }
-    else if (act === "inv-close") { invoiceId = null; invBlob = null; renderOwe(); }
-    else if (act === "inv-make") {
-      const data = invoiceData(d);
+    const inv = b.dataset.dact;
+    if (inv === "inv-close") { invoiceId = null; invBlob = null; renderOwe(); return; }
+    if (inv === "inv-make") {
+      const data = invoiceData(invoiceId);
       if (data.from) state.prefs.myName = data.from;
       saveLocal();
       document.activeElement?.blur();
       drawInvoice(data, state.prefs.invoiceStyle || 1).then(blob => {
         invBlob = blob; $("inv-img").src = URL.createObjectURL(blob); $("inv-out").hidden = false;
       });
-    } else if (act === "inv-save" && invBlob) {
-      saveOrSend(invBlob, "Payment request" + ($("inv-to").value.trim() ? " - " + $("inv-to").value.trim() : "") + ".jpg");
+      return;
     }
+    if (inv === "inv-save") {
+      if (invBlob) saveOrSend(invBlob, "Payment request" + ($("inv-to").value.trim() ? " - " + $("inv-to").value.trim() : "") + ".jpg");
+      return;
+    }
+    const li = b.closest("li[data-id]"); if (!li) return;
+    const id = li.dataset.id, d = state.debts.find(x => x.id === id); if (!d) return;
+    const act = b.dataset.dact;
+    if (act === "paid") { if (d.paid) delete d.paid; else d.paid = keyOf(); commit(); }
+    else if (act === "add-amt") { addAmtId = id; renderOwe(); $("aa-amount")?.focus(); }
     else if (act === "add-amt-cancel") { addAmtId = null; renderOwe(); }
     else if (act === "add-amt-save") {
       const amount = round2(parseFloat($("aa-amount").value));
