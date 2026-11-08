@@ -104,9 +104,9 @@
   .note { font-size: 12.5px; color: var(--c2); }
   .tagline { font-size: 11.5px; color: var(--c3); }
 
-  .check { width: 22px; height: 22px; border: 2px solid var(--c1); background: var(--c5); padding: 0; cursor: pointer;
+  .check { width: 18px; height: 18px; border: 1.5px solid var(--c1); border-radius: 50%; background: var(--c5); padding: 0; cursor: pointer;
     display: grid; place-items: center; color: var(--c5); }
-  .check svg { width: 14px; height: 14px; opacity: 0; }
+  .check svg { width: 10px; height: 10px; opacity: 0; }
   tr.done .check { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
   tr.done .check svg { opacity: 1; }
   tr.skipped .check, tr.other .check { border-color: var(--c4); cursor: default; }
@@ -160,7 +160,9 @@
 
   /* reminders */
   .rems { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--c4); }
-  .rem { display: grid; grid-template-columns: 30px 1fr 32px; gap: 10px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--c4); }
+  .rem-actions { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 0 12px 34px; border-bottom: 1px solid var(--c4); }
+  .rem.open { border-bottom-color: transparent; }
+  .rem { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--c4); }
   .rem.done .rem-text { color: var(--c3); text-decoration: line-through; }
   .rem.done .check { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
   .rem.done .check svg { opacity: 1; }
@@ -179,8 +181,10 @@
   button.day.past { color: var(--c3); }
   button.day.is-today { border: 2px solid var(--accent); }
   button.day.selected { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-  .day .dots { font-size: 11px; font-weight: 700; color: var(--accent); }
+  .day .dots { display: flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: var(--accent); }
+  .day .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
   .day.selected .dots { color: var(--on-accent); }
+  .day.selected .dots i { background: var(--on-accent); }
   .day-panel { margin-top: 16px; }
   .day-panel h3 { margin: 0 0 8px; font-size: 15px; }
 
@@ -601,7 +605,7 @@
 
   const $ = id => document.getElementById(id);
   // ---- reminders page: today at the top, a month calendar, then general reminders
-  let remEditId = null, remAdd = null, selDate = null, calMonth = null;
+  let remEditId = null, remOpenId = null, remDelArmed = false, remAdd = null, selDate = null, calMonth = null;
 
   function render() {
     const now = new Date();
@@ -616,11 +620,15 @@
   function remHTML(r, showDate) {
     const when = [showDate && r.date ? shortDate(r.date) : "", r.time ? fmt(r.time) : ""].filter(Boolean).join(" · ");
     const soon = r.date === keyOf() && r.time && !r.done && toMin(r.time) >= nowMinutes() && toMin(r.time) - nowMinutes() <= 60;
-    return '<li class="rem' + (r.done ? " done" : "") + '" data-rid="' + r.id + '">' +
+    const open = remOpenId === r.id && remEditId !== r.id;
+    return '<li class="rem' + (r.done ? " done" : "") + (open ? " open" : "") + '" data-rid="' + r.id + '">' +
       '<button class="check" type="button" data-ract2="done" aria-pressed="' + !!r.done + '" aria-label="' + (r.done ? "Mark not done: " : "Mark done: ") + esc(r.text) + '">' + CHECK + '</button>' +
-      '<button class="rem-text" type="button" data-ract2="edit">' + esc(r.text) + (when ? '<span class="rem-when' + (soon ? " soon" : "") + '">' + esc(when) + '</span>' : "") + '</button>' +
-      '<button class="remove" type="button" data-ract2="delete" aria-label="Remove ' + esc(r.text) + '">' + CROSS + '</button>' +
-    '</li>' + (remEditId === r.id ? '<li>' + remFormHTML("edit", r) + '</li>' : "");
+      '<button class="rem-text" type="button" data-ract2="open" aria-expanded="' + open + '">' + esc(r.text) + (when ? '<span class="rem-when' + (soon ? " soon" : "") + '">' + esc(when) + '</span>' : "") + '</button>' +
+    '</li>' +
+    (open ? '<li class="rem-actions" data-rid="' + r.id + '"><button class="btn ghost" type="button" data-ract2="edit">Edit</button>' +
+      '<button class="btn ghost" type="button" data-ract2="delete">' + (remDelArmed ? "Tap again to delete" : "Delete") + '</button>' +
+      '<button class="btn ghost" type="button" data-ract2="close">Close</button></li>' : "") +
+    (remEditId === r.id ? '<li>' + remFormHTML("edit", r) + '</li>' : "");
   }
   function remFormHTML(scope, r) {
     const dated = scope !== "general";
@@ -660,7 +668,7 @@
       const date = new Date(y, m, d), k = keyOf(date), c = count[k] || 0;
       const cls = "day" + (date < now ? " past" : "") + (k === keyOf(now) ? " is-today" : "") + (k === selDate ? " selected" : "");
       html += '<button type="button" class="' + cls + '" data-day="' + k + '" aria-label="' + date.toLocaleDateString(undefined, { month: "long", day: "numeric" }) +
-        (c ? ", " + c + (c === 1 ? " reminder" : " reminders") : "") + '"><span>' + d + '</span><span class="dots">' + (c ? (c > 3 ? c : "•".repeat(c)) : "") + '</span></button>';
+        (c ? ", " + c + (c === 1 ? " reminder" : " reminders") : "") + '"><span>' + d + '</span><span class="dots">' + "<i></i>".repeat(Math.min(c, 3)) + (c > 3 ? "+" : "") + '</span></button>';
     }
     $("cal").innerHTML = html;
     // the tapped day's reminders, under the calendar (today's are already at the top)
@@ -687,8 +695,13 @@
     const r = state.reminders.find(x => x.id === b.closest("[data-rid]").dataset.rid); if (!r) return;
     const act = b.dataset.ract2;
     if (act === "done") { r.done = !r.done; commit(); }
-    else if (act === "edit") { remEditId = remEditId === r.id ? null : r.id; remAdd = null; renderReminders(); }
-    else if (act === "delete") { state.reminders = state.reminders.filter(x => x.id !== r.id); commit(); }
+    else if (act === "open") { remOpenId = remOpenId === r.id ? null : r.id; remEditId = null; remDelArmed = false; remAdd = null; renderReminders(); }
+    else if (act === "close") { remOpenId = null; remDelArmed = false; renderReminders(); }
+    else if (act === "edit") { remEditId = r.id; remOpenId = null; remAdd = null; renderReminders(); }
+    else if (act === "delete") {
+      if (!remDelArmed) { remDelArmed = true; b.textContent = "Tap again to delete"; return; }
+      state.reminders = state.reminders.filter(x => x.id !== r.id); remOpenId = null; remDelArmed = false; commit();
+    }
   });
   $("page-reminders").addEventListener("submit", e => {
     const f = e.target.closest("form[data-rscope]"); if (!f) return;
@@ -702,7 +715,7 @@
     if (date) r.date = date; else delete r.date;
     if (time && date) r.time = time; else delete r.time;
     if (scope !== "edit") state.reminders.push(r);
-    remAdd = null; remEditId = null; document.activeElement?.blur(); commit();
+    remAdd = null; remEditId = null; remOpenId = null; document.activeElement?.blur(); commit();
   });
   $("clear-samples").onclick = () => { state.reminders = state.reminders.filter(r => !r.sample); commit(); };
 
@@ -1730,7 +1743,7 @@
   }
 
   prune(); saveLocal(); renderSoundBtn(); render();
-  setInterval(() => { checkReminders(); if (!remEditId && !remAdd && !oweEditId && !refundOpenId && !addAmtId && !invoiceId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
+  setInterval(() => { checkReminders(); if (!remEditId && !remOpenId && !remAdd && !oweEditId && !refundOpenId && !addAmtId && !invoiceId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
 
   (async () => {
     if (!window.claude || !window.claude.use) return;
