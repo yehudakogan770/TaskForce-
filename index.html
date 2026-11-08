@@ -1105,7 +1105,7 @@
 
   function receiptDetail(r) {
     const rows = (r.items || []).map(it => '<tr><td>' + esc(it.name) + ((num(it.qty) || 1) > 1 ? ' <span class="receipt-sub">× ' + num(it.qty) + ' at ' + money(num(it.price) || 0) + '</span>' : "") +
-      '</td><td>' + money(lineTotal(it)) + '</td></tr>').join("");
+      '</td><td>' + (num(it.price) == null ? "" : money(lineTotal(it))) + '</td></tr>').join("");
     const sum = (label, v, cls) => v == null ? "" : '<tr class="' + (cls || "sum") + '"><td>' + label + '</td><td>' + money(v) + '</td></tr>';
     const facts = [["Order date", r.orderDate && shortDate(r.orderDate)], ["Return by", r.returnBy ? shortDate(r.returnBy) : "Not on receipt"],
       ["Order #", r.orderNumber], ["Paid with", r.payment]].filter(f => f[1]);
@@ -1265,7 +1265,10 @@
   }
   const SUMMARY_RX = /\b(sub-?total|shipping|handling|tax|total|discount|promotion|promo|coupon|savings|gift card|balance|payment|refund|before|charged|grand)\b/i;
   const STOP_RX = /^(delivered|arriving|arrived|package|return|order|ship|payment|track|buy it again|get product|write a|leave|share|add a|view|your |sold by|condition|item\(s\)|sub-?total|shipping|total|estimated|grand|tax|qty|quantity|now arriving|not yet shipped|delivery)/i;
-  const cleanName = s => s.replace(/^[^A-Za-z0-9]+/, "").replace(/\s*\|\s*$/, "").replace(/\s{2,}/g, " ").trim();
+  const cleanName = s => s.replace(/^[^A-Za-z0-9]+/, "").replace(/^(?:[A-Za-z0-9]{1,2}\s*[:|>»]\s*)+/, "")
+    .replace(/\s*\|\s*$/, "").replace(/\s{2,}/g, " ").trim();
+  // text from the phone's status bar or the shopping app's own bars, not part of the order
+  const SCREEN_RX = /\b\d{1,2}:\d{2}\b|\b(?:5G|4G|3G|LTE)\b|search or ask a question|search amazon|hide details|show details|deliver to|your orders|order details|order info/gi;
 
   function parseItems(lines) {
     const items = [];
@@ -1276,6 +1279,13 @@
       for (let j = i - 1; j >= 0 && name.length < 4; j--) {
         const l = lines[j];
         if (STOP_RX.test(l) || /^\$?\s?[\d,]+\.\d{2}$/.test(l)) break;
+        const junk = [...l.matchAll(SCREEN_RX)];
+        if (junk.length) {
+          // keep only what comes after the last bit of screen text, then stop
+          const last = junk[junk.length - 1], tail = l.slice(last.index + last[0].length);
+          if (/[A-Za-z]{3}/.test(tail)) name.unshift(tail);
+          break;
+        }
         name.unshift(l);
       }
       let price = null, qty = 1;
@@ -1322,6 +1332,7 @@
     d.tax = amountAfter(text, ["estimated tax to be collected", "estimated tax", "sales tax", "\\n\\s*tax"]);
     d.total = amountAfter(text, ["grand total", "order total", "total charged", "amount charged", "\\n\\s*total(?! before)"]);
     d.items = parseItems(lines);
+    if (d.items.length === 1 && d.items[0].price == null && d.subtotal != null) d.items[0].price = Math.round(d.subtotal / (d.items[0].qty || 1) * 100) / 100;
     if (!d.items.length && d.subtotal != null) d.items = [{ name: d.store ? d.store + " order" : "Order", qty: 1, price: d.subtotal }];
     return d;
   }
