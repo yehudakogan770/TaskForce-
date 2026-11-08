@@ -280,8 +280,9 @@
   .soon-sub { display: block; font-size: 13px; color: var(--c3); }
   .soon-amt { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
   #rc-text::placeholder { text-align: center; }
-  #rc-text { display: block; font: inherit; font-size: 16px; width: 100%; min-height: 72px; resize: vertical; color: var(--c1); background: var(--c5);
-    border: 1px solid var(--c3); padding: 10px 12px; outline: none; }
+  /* the hint sits in the middle of the box: 28px above and below a 22px line in an 80px box */
+  #rc-text { display: block; font: inherit; font-size: 16px; line-height: 22px; width: 100%; height: 80px; resize: none; color: var(--c1); background: var(--c5);
+    border: 1px solid var(--c3); padding: 28px 12px; outline: none; }
   #rc-text:focus { border-color: var(--c1); box-shadow: inset 0 0 0 1px var(--c1); }
   .receipts { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--c4); }
   .receipt { border-bottom: 1px solid var(--c4); }
