@@ -13,7 +13,6 @@ const mmss = s => Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart
 const restText = s => s >= 60 ? (s % 60 ? mmss(s) : s / 60 + " min") : s + " s";
 // the info line is never blank
 const infoLine = e => [["Equipment", e.equipment || "None (body weight)"], ["Support", e.support || "Floor"], ["Position", e.position || "Standing"]];
-const DEEP = Object.fromEntries(MUSCLES.filter(m => m.deep).map(m => [m.id, m.under || []]));
 // muscles the progress lists rank: surface muscles that at least one exercise in the library trains
 const MAJOR = MUSCLES.filter(m => !m.deep && EXERCISES.some(e => e.primary.includes(m.id) || e.secondary.includes(m.id)));
 
@@ -101,14 +100,14 @@ export function mount(root, bridge) {
 
   // ---------------------------------------------------------------- 3D model
   const isDark = () => matchMedia("(prefers-color-scheme: dark)").matches;
-  const stageBg = () => isDark() ? 0x161a21 : 0x262b34;
+  const stageBg = () => isDark() ? 0x1b1f27 : 0xeef0f3;
   let three = null;
   async function load3D() {
     const { webglAvailable, createAnatomy } = await import("./anatomy.js");
     if (!webglAvailable()) throw new Error("no-webgl");
-    anatomy = createAnatomy($("fit-canvas"), { deepIds: DEEP, background: stageBg(), onPick: id => {
+    anatomy = await createAnatomy($("fit-canvas"), { background: stageBg(), onPick: id => {
       if (!id) return;
-      showMuscle(id, true);
+      showMuscle(id, true, true);
     } });
     anatomy.setDeep(ui.deep);
     three = true;
@@ -168,6 +167,12 @@ export function mount(root, bridge) {
   }
   root.querySelector(".fit-tabs").addEventListener("click", e => { const b = e.target.closest("[data-fview]"); if (b) setView(b.dataset.fview); });
 
+  // scroll the page (only up and down) so an element sits at the top; scrollIntoView would also nudge the side-swiping pages
+  function scrollToEl(el) {
+    const page = el.closest(".page") || document.scrollingElement;
+    const top = el.getBoundingClientRect().top - page.getBoundingClientRect().top + page.scrollTop - 8;
+    page.scrollTo({ top, behavior: "smooth" });
+  }
   let toastT = 0;
   function toast(t) { const el = $("fit-toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 2600); }
 
@@ -237,17 +242,26 @@ export function mount(root, bridge) {
   $("fit-slow").onclick = () => { ui.slow = !ui.slow; demo?.setSpeed(ui.slow ? 0.35 : 1); syncDemoButtons(); };
   root.querySelector(".fit-demo-ctl").addEventListener("click", e => { const b = e.target.closest("[data-dview]"); if (b && demo) { demo.setView(b.dataset.dview); syncDemoButtons(b.dataset.dview); } });
 
+  // turn the model to the side where the main muscles are
+  function faceMuscles(ids) {
+    if (!anatomy || !ids.length) return;
+    let f = 0, b = 0;
+    ids.forEach(id => { const v = muscleById[id]?.view; if (v === "front") f++; else if (v === "back") b++; });
+    if (f || b) anatomy.setView(b > f ? "back" : "front");
+  }
   function showExercise(id, scroll) {
     ui.ex = id; ui.muscle = null;
+    faceMuscles(exerciseById[id].primary);
     if (ui.view !== "explore") setView("explore");
     renderDetail(); paintModel(); renderLibrary();
-    if (scroll) $("fit-detail").scrollIntoView({ behavior: "smooth", block: "start" });
+    if (scroll) scrollToEl($("fit-detail"));
   }
-  function showMuscle(id, scroll) {
+  function showMuscle(id, scroll, fromModel) {
     ui.muscle = id; ui.ex = null;
+    if (!fromModel) faceMuscles([id]);
     if (ui.view !== "explore") setView("explore");
     renderDetail(); paintModel(); renderLibrary();
-    if (scroll && innerWidth < 900) $("fit-detail").scrollIntoView({ behavior: "smooth", block: "start" });
+    if (scroll && innerWidth < 900) scrollToEl($("fit-detail"));
   }
 
   // ---------------------------------------------------------------- explore: library
@@ -373,7 +387,7 @@ export function mount(root, bridge) {
     if (b("[data-wstart]")) { startSession({ id: d.editing, name: d.name.trim() || "Workout", items: d.items }); return; }
     if (b("[data-wclear]")) { F().draft = { name: "", items: [], editing: null }; ui.adding = false; save(); renderBuilder(); paintModel(); return; }
     if ((x = b("[data-wgo]"))) { const w = F().workouts.find(w => w.id === x.dataset.wgo); if (w) startSession(w); return; }
-    if ((x = b("[data-wedit]"))) { const w = F().workouts.find(w => w.id === x.dataset.wedit); if (w) { F().draft = { name: w.name, items: w.items.map(i => ({ ...i })), editing: w.id }; save(); renderBuilder(); paintModel(); $("fit-builder").scrollIntoView({ behavior: "smooth", block: "start" }); } return; }
+    if ((x = b("[data-wedit]"))) { const w = F().workouts.find(w => w.id === x.dataset.wedit); if (w) { F().draft = { name: w.name, items: w.items.map(i => ({ ...i })), editing: w.id }; save(); renderBuilder(); paintModel(); scrollToEl($("fit-builder")); } return; }
     if ((x = b("[data-wdel]"))) {
       const id = x.dataset.wdel;
       if (ui.confirm !== "w" + id) { ui.confirm = "w" + id; renderSaved(); setTimeout(() => { if (ui.confirm === "w" + id) { ui.confirm = null; renderSaved(); } }, 3000); return; }
@@ -402,7 +416,7 @@ export function mount(root, bridge) {
       items: w.items.map(i => ({ ex: i.ex, reps: i.reps, rest: num(i.rest) || 60, sets: Array.from({ length: Math.max(1, num(i.sets) || 1) }, () => ({ w: i.weight === "" || i.weight == null ? "" : String(i.weight), r: "", done: false })) })) };
     save();
     if (ui.view !== "workouts") setView("workouts"); else { renderWorkouts(); paintModel(); }
-    $("fit-session").scrollIntoView({ behavior: "smooth", block: "start" });
+    scrollToEl($("fit-session"));
   }
   function renderSession() {
     const a = F().active, el = $("fit-session");
@@ -513,8 +527,8 @@ export function mount(root, bridge) {
     const sc = muscleScores(30);
     const ranked = MAJOR.map(m => [m.id, sc[m.id] || 0]).sort((a, b) => b[1] - a[1] || muscleById[a[0]].name.localeCompare(muscleById[b[0]].name));
     const most = ranked.filter(r => r[1] > 0).slice(0, 5), least = ranked.slice().reverse().slice(0, 5).sort((a, b) => a[1] - b[1]);
-    const prs = Object.entries(personalRecords()).sort((a, b) => b[1].date - a[1].date);
-    const done = [...new Set(hist.flatMap(s => s.items.map(i => i.ex)))];
+    const prs = Object.entries(personalRecords()).filter(([id]) => exerciseById[id]).sort((a, b) => b[1].date - a[1].date);
+    const done = [...new Set(hist.flatMap(s => s.items.map(i => i.ex)))].filter(id => exerciseById[id]);
     if (!ui.progEx || !done.includes(ui.progEx)) ui.progEx = done[0] || null;
     const bar = (v, max) => `<i class="fit-meter"><b style="width:${Math.round(v / Math.max(1, max) * 100)}%"></b></i>`;
     el.innerHTML = `
@@ -529,7 +543,7 @@ export function mount(root, bridge) {
         <div><h2>Most trained</h2><ul class="fit-rank">${most.map(([id, v]) => `<li><button type="button" class="fit-exlink" data-muscle="${id}">${h(muscleById[id].name)}</button>${bar(v, most[0][1])}<span>${fmtNum(v)}</span></li>`).join("")}</ul></div>
         <div><h2>Least trained</h2><ul class="fit-rank">${least.map(([id, v]) => `<li><button type="button" class="fit-exlink" data-muscle="${id}">${h(muscleById[id].name)}</button>${bar(v, most[0]?.[1] || 1)}<span>${fmtNum(v)}</span></li>`).join("")}</ul></div>
       </div>
-      <p class="fit-muted">Last 30 days, counted in sets (a helping muscle counts half). The model shows the same: red for the muscles you trained most, light red for the rest.</p>
+      <p class="fit-muted">Last 30 days, counted in sets (a helping muscle counts half). The model shows the same: bright green for the muscles you trained most, soft green for the rest.</p>
       <h2>Progress</h2>
       <div class="fit-chips">${done.map(id => `<button type="button" class="chip wide" data-progex="${id}" aria-pressed="${ui.progEx === id}">${h(exerciseById[id].name)}</button>`).join("")}</div>
       ${ui.progEx ? exerciseChart(ui.progEx) : ""}

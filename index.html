@@ -487,20 +487,20 @@
   .fit-side { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
   .fit-side > div { display: flex; flex-direction: column; gap: 28px; }
   .fit-model { display: flex; flex-direction: column; gap: 10px; }
-  .fit-stage, .fit-demo-stage { position: relative; width: 100%; background: #262b34; overflow: hidden; }
+  .fit-stage, .fit-demo-stage { position: relative; width: 100%; background: #eef0f3; overflow: hidden; }
   .fit-stage { height: min(62vh, 520px); min-height: 340px; }
-  @media (prefers-color-scheme: dark) { .fit-stage { background: #161a21; } }
+  @media (prefers-color-scheme: dark) { .fit-stage { background: #1b1f27; } }
   .fit-stage canvas, .fit-demo-stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
   .fit-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-    color: #c4c9d3; font-size: 13.5px; background: inherit; }
+    color: var(--c2); font-size: 13.5px; background: inherit; }
   .fit-demo-stage .fit-overlay { color: var(--c2); }
   .fit-bar { display: block; width: 120px; height: 3px; background: rgba(140,147,162,.35); position: relative; overflow: hidden; }
   .fit-bar::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 40%; background: var(--accent); animation: fitbar 1.1s ease-in-out infinite; }
   @keyframes fitbar { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
   .fit-tag { position: absolute; left: 10px; top: 10px; max-width: calc(100% - 20px); padding: 4px 10px; font-size: 12.5px; font-weight: 600;
-    background: rgba(14,17,22,.72); color: #f1f3f6; pointer-events: none; }
-  .fit-fallback { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 24px; text-align: center; color: #c4c9d3; }
-  .fit-fallback strong { color: #f1f3f6; }
+    background: var(--c1); color: var(--c5); pointer-events: none; }
+  .fit-fallback { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 24px; text-align: center; color: var(--c2); }
+  .fit-fallback strong { color: var(--c1); }
   .fit-views { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid var(--c4); }
   .fit-views button { font: inherit; font-size: 13.5px; font-weight: 600; height: 36px; border: 0; background: var(--c5); color: var(--c2); cursor: pointer; }
   .fit-views button + button { border-left: 1px solid var(--c4); }
@@ -508,9 +508,9 @@
   .fit-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; font-size: 12.5px; color: var(--c2); align-items: center; }
   .fit-legend span { display: inline-flex; align-items: center; gap: 6px; }
   .sw { display: inline-block; width: 11px; height: 11px; }
-  .sw.p, .fit-mchip.p i, .fit-kind.p i { background: #e0352b; }
-  .sw.s, .fit-mchip.s i, .fit-kind.s i { background: #f08a6a; }
-  .sw.n, .fit-mchip.n i { background: #b7bcc5; }
+  .sw.p, .fit-mchip.p i, .fit-kind.p i { background: #7fd10a; }
+  .sw.s, .fit-mchip.s i, .fit-kind.s i { background: #c4ea87; }
+  .sw.n, .fit-mchip.n i { background: #dfe1e5; box-shadow: inset 0 0 0 1px #b7bcc5; }
   .fit-check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
   .fit-check input { position: absolute; opacity: 0; width: 1px; height: 1px; }
   .fit-check i { width: 16px; height: 16px; border: 1.5px solid var(--c3); border-radius: 50%; display: inline-block; }
@@ -619,7 +619,7 @@
   .fit-rank li .fit-exlink { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .fit-rank li span { text-align: right; color: var(--c3); font-variant-numeric: tabular-nums; }
   .fit-meter { display: block; height: 6px; background: var(--c4); }
-  .fit-meter b { display: block; height: 100%; background: #e0352b; }
+  .fit-meter b { display: block; height: 100%; background: #7fd10a; }
   .fit-prs li { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--c4); }
   .fit-prs li span { font-size: 12.5px; color: var(--c3); }
   .fit-hist li { border-bottom: 1px solid var(--c4); }
