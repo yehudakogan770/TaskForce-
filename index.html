@@ -242,6 +242,13 @@
   .add-amt-form { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
   .add-amt-form input { width: 100%; }
   .add-amt-form .actions { grid-column: 1 / -1; }
+  .entry-links { display: flex; gap: 16px; flex-wrap: wrap; }
+  .inv-form { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; padding: 12px; border: 1px solid var(--c4); }
+  .inv-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--c2); }
+  .inv-form label.tick { flex-direction: row; align-items: center; gap: 8px; font-size: 13.5px; color: var(--c1); }
+  .inv-form label.tick input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .inv-form textarea { font: inherit; font-size: 16px; line-height: 1.4; color: var(--c1); background: var(--c5); border: 1px solid var(--c3); padding: 10px 12px; min-height: 84px; resize: vertical; }
+  .inv-preview { max-width: 100%; border: 1px solid var(--c4); }
   .debt-amt { display: block; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
   .debt-due { display: block; font-size: 11.5px; font-weight: 600; text-align: right; margin-top: 4px; white-space: nowrap; }
   .debt-due.overdue { background: var(--accent); color: var(--on-accent); padding: 1px 6px; }
@@ -1008,7 +1015,160 @@
   const shortDate = k => dateOf(k).toLocaleDateString(undefined, { month: "short", day: "numeric", year: dateOf(k).getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
   const dayDiff = k => Math.round((dateOf(k) - dateOf(keyOf())) / 86400000);
   // debts have dir "owe" (I owe them) or "owed" (they owe me); older entries without dir are "owe"
-  let oweEditId = null, oweDeleteArmed = false, addAmtId = null;
+  let oweEditId = null, oweDeleteArmed = false, addAmtId = null, invoiceId = null, invMsgEdited = false, invBlob = null;
+
+  // ---- payment request: a letter-size (8.5 x 11) image asking someone to pay what they owe
+  const longDate = k => dateOf(k).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  function defaultInvoiceMsg(from, to, payBy) {
+    return "Hi " + (to || "there") + ",\n\nThis is a friendly note from " + (from || "me") + " about the amount below. " +
+      (payBy ? "Could you please send payment by " + longDate(payBy) + "?" : "Could you please send payment when you get a chance?") +
+      "\n\nThank you!";
+  }
+  function invoiceFormHTML(d) {
+    const from = state.prefs.myName || "", to = (d.who || "").trim();
+    return '<div class="inv-form" id="inv-form">' +
+      '<label>Your name (who it\'s from)<input type="text" id="inv-from" maxlength="60" value="' + esc(from) + '"></label>' +
+      '<label>Who it\'s to<input type="text" id="inv-to" maxlength="60" value="' + esc(to) + '"></label>' +
+      '<label class="tick"><input type="checkbox" id="inv-dates" checked> Show the date of each amount</label>' +
+      '<label class="tick"><input type="checkbox" id="inv-payby-on"' + (d.due ? " checked" : "") + '> Ask them to pay by a date</label>' +
+      '<label id="inv-payby-wrap"' + (d.due ? "" : " hidden") + '>Pay by<input type="date" id="inv-payby" value="' + (d.due || "") + '"></label>' +
+      '<label>Message<textarea id="inv-msg" maxlength="600">' + esc(defaultInvoiceMsg(from, to, d.due)) + '</textarea></label>' +
+      '<label>Notes (optional)<textarea id="inv-notes" maxlength="600" placeholder="For example: Zelle or Venmo details"></textarea></label>' +
+      '<div class="actions"><button class="btn" type="button" data-dact="inv-make">Make image</button>' +
+      '<button class="btn ghost" type="button" data-dact="inv-close">Close</button></div>' +
+      '<div id="inv-out" hidden><img class="inv-preview" id="inv-img" alt="Payment request preview">' +
+      '<div class="actions" style="margin-top:8px"><button class="btn" type="button" data-dact="inv-save">Save or send</button></div></div>' +
+    '</div>';
+  }
+  function invoiceData(d) {
+    const payOn = $("inv-payby-on").checked && $("inv-payby").value;
+    const rows = (d.parts ? [...d.parts].sort((a, b) => a.date < b.date ? -1 : 1) : [{ amount: d.amount, date: d.date, what: d.what }])
+      .map(p => ({ date: p.date, what: p.what || d.what || d.sub || d.cat || "Amount", amount: p.amount }));
+    return { from: $("inv-from").value.trim(), to: $("inv-to").value.trim(), showDates: $("inv-dates").checked,
+      payBy: payOn ? $("inv-payby").value : "", msg: $("inv-msg").value.trim(), notes: $("inv-notes").value.trim(),
+      rows, total: d.amount, issued: keyOf() };
+  }
+
+  // draws the page; style picks one of the five looks
+  async function drawInvoice(data, style) {
+    const W = 1275, H = 1650, S = 2;  // 8.5 x 11 inches at 150 dots per inch, drawn at double size for sharpness
+    const c = document.createElement("canvas"); c.width = W * S; c.height = H * S;
+    const g = c.getContext("2d"); g.scale(S, S);
+    try { await Promise.all(["400", "600", "700"].map(w => document.fonts.load(w + " 30px Petrona"))); } catch {}
+    const F = (w, px) => w + " " + px + "px Petrona, Georgia, serif";
+    const INK = "#12151b", SOFT = "#404654", MUTE = "#8c93a2", LINE = "#e3e7ee", ACC = "#3d63d6";
+    g.fillStyle = "#ffffff"; g.fillRect(0, 0, W, H);
+    const M = 130, R = W - M;
+    const wrap = (text, x, y, maxW, lh, font, color) => {
+      g.font = font; g.fillStyle = color;
+      for (const para of String(text).split("\n")) {
+        if (!para) { y += lh * 0.6; continue; }
+        let line = "";
+        for (const word of para.split(" ")) {
+          const test = line ? line + " " + word : word;
+          if (g.measureText(test).width > maxW && line) { g.fillText(line, x, y); y += lh; line = word; } else line = test;
+        }
+        if (line) { g.fillText(line, x, y); y += lh; }
+      }
+      return y;
+    };
+    const fit = (text, maxW) => { let t = text; while (g.measureText(t).width > maxW && t.length > 1) t = t.slice(0, -2) + "…"; return t; };
+    const right = (text, x, y) => { g.textAlign = "right"; g.fillText(text, x, y); g.textAlign = "left"; };
+    const title = "Payment Request";
+    let y = 0;
+
+    const fromTo = (yy, labelColor, nameColor) => {
+      g.font = F(600, 15); g.fillStyle = labelColor; g.fillText("FROM", M, yy); g.fillText("TO", W / 2 + 20, yy);
+      g.font = F(600, 28); g.fillStyle = nameColor; g.fillText(fit(data.from || "—", W / 2 - M - 30), M, yy + 38); g.fillText(fit(data.to || "—", R - W / 2 - 20), W / 2 + 20, yy + 38);
+      return yy + 70;
+    };
+    const table = (yy, opts = {}) => {
+      const dateW = data.showDates ? 210 : 0;
+      g.font = F(600, 15); g.fillStyle = MUTE;
+      if (data.showDates) g.fillText("DATE", M, yy);
+      g.fillText("FOR", M + dateW, yy); right("AMOUNT", R, yy);
+      yy += 16; g.fillStyle = opts.headLine || INK; g.fillRect(M, yy, R - M, 2); yy += 44;
+      const maxRows = 16, rows = data.rows.slice(0, maxRows);
+      for (const r of rows) {
+        g.font = F(400, 24); g.fillStyle = SOFT;
+        if (data.showDates) g.fillText(dateOf(r.date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }), M, yy);
+        g.fillStyle = INK; g.fillText(fit(r.what, R - M - dateW - 200), M + dateW, yy); right(money(r.amount), R, yy);
+        yy += 20; g.fillStyle = LINE; g.fillRect(M, yy, R - M, 1); yy += 42;
+      }
+      if (data.rows.length > maxRows) { g.font = F(400, 20); g.fillStyle = MUTE; g.fillText("+ " + (data.rows.length - maxRows) + " more", M + dateW, yy); yy += 40; }
+      return yy;
+    };
+    const totalLine = (yy, color) => {
+      g.fillStyle = INK; g.fillRect(M, yy - 30, R - M, 3);
+      g.font = F(700, 32); g.fillStyle = INK; g.fillText("Total due", M, yy + 18); g.fillStyle = color || INK; right(money(data.total), R, yy + 18);
+      return yy + 70;
+    };
+    const payBy = (yy) => {
+      if (!data.payBy) return yy;
+      g.fillStyle = "#eef2fb"; g.fillRect(M, yy, R - M, 70);
+      g.fillStyle = ACC; g.fillRect(M, yy, 6, 70);
+      g.font = F(600, 24); g.fillStyle = INK; g.fillText("Please pay by " + longDate(data.payBy), M + 28, yy + 45);
+      return yy + 110;
+    };
+    const notes = (yy) => {
+      if (!data.notes) return yy;
+      g.font = F(600, 15); g.fillStyle = MUTE; g.fillText("NOTES", M, yy);
+      return wrap(data.notes, M, yy + 36, R - M, 34, F(400, 22), SOFT) + 20;
+    };
+    const issued = "Issued " + dateOf(data.issued).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+
+    if (style === 1) {          // Classic: title, a thin blue rule, everything in order
+      g.font = F(700, 56); g.fillStyle = INK; g.fillText(title, M, 210);
+      g.font = F(400, 20); g.fillStyle = MUTE; right(issued, R, 210);
+      g.fillStyle = ACC; g.fillRect(M, 245, R - M, 5);
+      y = fromTo(330, MUTE, INK) + 40;
+      y = wrap(data.msg, M, y, R - M, 38, F(400, 25), SOFT) + 40;
+      y = table(y); y = totalLine(y + 20, ACC); y = payBy(y + 10); notes(y + 20);
+    } else if (style === 2) {   // Banner: a blue band across the top
+      g.fillStyle = ACC; g.fillRect(0, 0, W, 300);
+      g.font = F(700, 60); g.fillStyle = "#ffffff"; g.fillText(title, M, 175);
+      g.font = F(400, 22); g.fillStyle = "rgba(255,255,255,.85)"; g.fillText(issued, M, 230);
+      g.font = F(400, 22); right("Amount due", R, 150); g.font = F(700, 52); right(money(data.total), R, 215);
+      y = fromTo(390, MUTE, INK) + 40;
+      y = wrap(data.msg, M, y, R - M, 38, F(400, 25), SOFT) + 40;
+      y = table(y); y = totalLine(y + 20, ACC); y = payBy(y + 10); notes(y + 20);
+    } else if (style === 3) {   // Minimal: centered and quiet
+      g.textAlign = "center";
+      g.font = F(400, 22); g.fillStyle = MUTE; g.fillText("PAYMENT REQUEST", W / 2, 200);
+      g.font = F(700, 96); g.fillStyle = INK; g.fillText(money(data.total), W / 2, 320);
+      g.font = F(400, 24); g.fillStyle = SOFT; g.fillText((data.from || "—") + "  →  " + (data.to || "—"), W / 2, 385);
+      g.font = F(400, 20); g.fillStyle = MUTE; g.fillText(issued, W / 2, 425);
+      g.textAlign = "left";
+      g.fillStyle = LINE; g.fillRect(W / 2 - 60, 470, 120, 3);
+      y = wrap(data.msg, M + 60, 550, R - M - 120, 38, F(400, 25), SOFT) + 40;
+      y = table(y, { headLine: LINE }); y = totalLine(y + 20); y = payBy(y + 10); notes(y + 20);
+    } else if (style === 4) {   // Letter: reads like a short letter, signed at the bottom
+      g.font = F(400, 20); g.fillStyle = MUTE; g.fillText(issued, M, 190);
+      g.font = F(700, 44); g.fillStyle = INK; g.fillText("To " + (data.to || "—"), M, 260);
+      y = wrap(data.msg, M, 340, R - M, 42, F(400, 28), INK) + 40;
+      y = table(y, { headLine: LINE }); y = totalLine(y + 20, ACC); y = payBy(y + 10); y = notes(y + 20);
+      g.font = F(400, 26); g.fillStyle = SOFT; g.fillText("— " + (data.from || ""), M, Math.max(y + 40, H - 200));
+    } else {                    // Bold total: a big amount box beside the title
+      g.font = F(700, 52); g.fillStyle = INK; g.fillText(title, M, 200);
+      g.font = F(400, 20); g.fillStyle = MUTE; g.fillText(issued, M, 245);
+      g.fillStyle = INK; g.fillRect(R - 380, 140, 380, 150);
+      g.font = F(400, 20); g.fillStyle = "#c4c9d3"; right("AMOUNT DUE", R - 30, 185);
+      g.font = F(700, 58); g.fillStyle = "#ffffff"; right(money(data.total), R - 30, 260);
+      y = fromTo(360, MUTE, INK) + 40;
+      y = wrap(data.msg, M, y, R - M, 38, F(400, 25), SOFT) + 40;
+      y = table(y); y = totalLine(y + 20); y = payBy(y + 10); notes(y + 20);
+    }
+    return new Promise(res => c.toBlob(res, "image/jpeg", 0.92));
+  }
+
+  async function saveOrSend(blob, name) {
+    const file = new File([blob], name, { type: "image/jpeg" });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click(); a.remove();
+  }
+
   const openCats = new Set();  // which category drop-downs are open, as "side|category"
 
   // an entry can hold several amounts (d.parts) — its amount is their sum
@@ -1107,7 +1267,9 @@
               '<input type="text" id="aa-what" maxlength="140" placeholder="What it\'s for (optional)" aria-label="What it\'s for" style="grid-column:1/-1">' +
               '<div class="actions"><button class="btn" type="button" data-dact="add-amt-save">Add amount</button>' +
               '<button class="btn ghost" type="button" data-dact="add-amt-cancel">Cancel</button></div></div>'
-          : '<button class="linkish add-amt" type="button" data-dact="add-amt">+ Add amount</button>') +
+          : '<div class="entry-links"><button class="linkish add-amt" type="button" data-dact="add-amt">+ Add amount</button>' +
+            (sideOf(d) === "owed" ? '<button class="linkish add-amt" type="button" data-dact="invoice">Payment request</button>' : "") + '</div>') +
+        (invoiceId === d.id ? invoiceFormHTML(d) : "") +
       '</div>' +
       '<div><span class="debt-amt">' + money(d.amount) + '</span>' + (due ? '<span class="debt-due ' + due.cls + '">' + due.text + '</span>' : "") + '</div>' +
       '<button class="remove" type="button" data-dact="remove" aria-label="Remove ' + esc(debtTitle(d)) + '">' + CROSS + '</button>' +
@@ -1309,6 +1471,19 @@
     const act = b.dataset.dact;
     if (act === "paid") { if (d.paid) delete d.paid; else d.paid = keyOf(); commit(); }
     else if (act === "add-amt") { addAmtId = id; renderOwe(); $("aa-amount")?.focus(); }
+    else if (act === "invoice") { invoiceId = invoiceId === id ? null : id; invMsgEdited = false; invBlob = null; renderOwe(); }
+    else if (act === "inv-close") { invoiceId = null; invBlob = null; renderOwe(); }
+    else if (act === "inv-make") {
+      const data = invoiceData(d);
+      if (data.from) state.prefs.myName = data.from;
+      saveLocal();
+      document.activeElement?.blur();
+      drawInvoice(data, state.prefs.invoiceStyle || 1).then(blob => {
+        invBlob = blob; $("inv-img").src = URL.createObjectURL(blob); $("inv-out").hidden = false;
+      });
+    } else if (act === "inv-save" && invBlob) {
+      saveOrSend(invBlob, "Payment request" + ($("inv-to").value.trim() ? " - " + $("inv-to").value.trim() : "") + ".jpg");
+    }
     else if (act === "add-amt-cancel") { addAmtId = null; renderOwe(); }
     else if (act === "add-amt-save") {
       const amount = round2(parseFloat($("aa-amount").value));
@@ -1338,6 +1513,16 @@
     };
   }
   $("page-owe").addEventListener("click", e => { const c = e.target.closest("[data-close-add]"); if (c) closeAddForm(c.dataset.closeAdd); });
+  const onInvoiceField = e => {
+    if (!$("inv-form")) return;
+    if (e.target.id === "inv-msg") { invMsgEdited = true; return; }
+    if (["inv-from", "inv-to", "inv-payby", "inv-payby-on"].includes(e.target.id) && !invMsgEdited) {
+      $("inv-msg").value = defaultInvoiceMsg($("inv-from").value.trim(), $("inv-to").value.trim(), $("inv-payby-on").checked ? $("inv-payby").value : "");
+    }
+    if (e.target.id === "inv-payby-on") $("inv-payby-wrap").hidden = !e.target.checked;
+  };
+  $("page-owe").addEventListener("input", onInvoiceField);
+  $("page-owe").addEventListener("change", onInvoiceField);
   $("page-owe").addEventListener("keydown", e => {
     if (e.key === "Enter" && e.target.closest(".add-amt-form")) { e.preventDefault(); $("page-owe").querySelector('[data-dact="add-amt-save"]')?.click(); }
     if (e.key === "Enter" && e.target.id && e.target.id.startsWith("sub-new-")) { e.preventDefault(); e.target.nextElementSibling.click(); }
@@ -1821,7 +2006,7 @@
   }
 
   prune(); saveLocal(); renderSoundBtn(); render();
-  setInterval(() => { checkReminders(); if (!editingId && !oweEditId && !refundOpenId && !addAmtId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
+  setInterval(() => { checkReminders(); if (!editingId && !oweEditId && !refundOpenId && !addAmtId && !invoiceId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
 
   (async () => {
     if (!window.claude || !window.claude.use) return;
