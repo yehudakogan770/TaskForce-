@@ -270,6 +270,8 @@
   .rc-table td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: 12px; }
   .rc-table tr.sum td { border-bottom: 0; color: var(--c2); padding: 3px 0; }
   .rc-table tr.total td { font-weight: 700; color: var(--c1); border-top: 2px solid var(--c1); padding-top: 8px; }
+  .rc-label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--c2); min-width: 0; }
+  .rc-label input { width: 100%; }
   .rc-facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: 14px; margin: 0; }
   .rc-facts dt { color: var(--c3); }
   .rc-facts dd { margin: 0; overflow-wrap: anywhere; }
@@ -428,7 +430,7 @@
         <div class="rc-stat"><span>Tax</span><strong id="rc-tax-total">$0.00</strong></div>
         <div class="rc-stat"><span>Total</span><strong id="rc-grand-total">$0.00</strong></div>
       </div>
-      <p class="rc-stats-note" id="rc-stats-note">All saved receipts. Returned orders aren't counted.</p>
+      <p class="rc-stats-note" id="rc-stats-note">All saved receipts.</p>
     </section>
 
     <section aria-labelledby="soon-title" id="soon-section">
@@ -1046,7 +1048,7 @@
   $("clear-debt-samples").onclick = () => { state.debts = state.debts.filter(d => !d.sample); commit(); };
 
   // ---- receipts
-  let rcDraft = null, rcFile = null, rcOpenId = null, rcDeleteArmed = false, rcBusy = false;
+  let rcDraft = null, rcFile = null, rcOpenId = null, rcDeleteArmed = false, rcBusy = false, refundOpenId = null;
   const num = v => { const n = typeof v === "number" ? v : parseFloat(String(v ?? "").replace(/[^0-9.\-]/g, "")); return isFinite(n) ? Math.round(n * 100) / 100 : null; };
   const isDate = v => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(dateOf(v));
   const lineTotal = it => (num(it.qty) || 1) * (num(it.price) || 0);
@@ -1057,6 +1059,7 @@
   }
 
   function returnLabel(r) {
+    if (r.refund) return { cls: "later", text: "Refunded " + money(r.refund.amount) };
     if (r.returned) return { cls: "later", text: "Returned " + shortDate(r.returned) };
     if (!r.returnBy) return null;
     const n = dayDiff(r.returnBy);
@@ -1068,14 +1071,18 @@
 
   function renderReceipts() {
     const list = [...(state.receipts || [])].sort((a, b) => (b.orderDate || "") < (a.orderDate || "") ? -1 : 1);
-    const kept = list.filter(r => !r.returned);
+    // items and tax leave out orders refunded in full; the total takes every refund off
+    const fullyRefunded = r => r.refund && r.total != null && r.refund.amount >= r.total;
+    const kept = list.filter(r => !fullyRefunded(r));
     const itemsOf = r => r.subtotal != null ? r.subtotal : (r.items || []).reduce((a, it) => a + lineTotal(it), 0);
+    const refunds = list.reduce((a, r) => a + (r.refund ? r.refund.amount : 0), 0);
     $("rc-items-total").textContent = money(kept.reduce((a, r) => a + itemsOf(r), 0));
     $("rc-tax-total").textContent = money(kept.reduce((a, r) => a + (r.tax || 0), 0));
-    $("rc-grand-total").textContent = money(kept.reduce((a, r) => a + (r.total || 0), 0));
+    $("rc-grand-total").textContent = money(list.reduce((a, r) => a + (r.total || 0), 0) - refunds);
+    $("rc-stats-note").textContent = refunds ? "All saved receipts, with " + money(refunds) + " in refunds taken off the total." : "All saved receipts.";
 
     // still returnable, the one whose window closes first at the top
-    const soon = kept.filter(r => r.returnBy && dayDiff(r.returnBy) >= 0).sort((a, b) => a.returnBy < b.returnBy ? -1 : 1);
+    const soon = list.filter(r => !r.returned && !r.refund).filter(r => r.returnBy && dayDiff(r.returnBy) >= 0).sort((a, b) => a.returnBy < b.returnBy ? -1 : 1);
     $("soon-section").hidden = !soon.length;
     $("soon-list").innerHTML = soon.map(r => {
       const n = dayDiff(r.returnBy);
@@ -1107,16 +1114,24 @@
       '</td><td>' + (num(it.price) == null ? "" : money(lineTotal(it))) + '</td></tr>').join("");
     const sum = (label, v, cls) => v == null ? "" : '<tr class="' + (cls || "sum") + '"><td>' + label + '</td><td>' + money(v) + '</td></tr>';
     const facts = [["Order date", r.orderDate && shortDate(r.orderDate)], ["Return by", r.returnBy ? shortDate(r.returnBy) : "Not on receipt"],
-      ["Order #", r.orderNumber], ["Paid with", r.payment]].filter(f => f[1]);
+      ["Order #", r.orderNumber], ["Paid with", r.payment], ["Returned", r.returned && shortDate(r.returned)],
+      ["Refunded", r.refund && money(r.refund.amount) + " on " + shortDate(r.refund.date)]].filter(f => f[1]);
     return '<div class="rc-detail">' +
       '<dl class="rc-facts">' + facts.map(f => '<dt>' + f[0] + '</dt><dd>' + esc(f[1]) + '</dd>').join("") + '</dl>' +
       '<table class="rc-table"><tbody>' + rows + sum("Subtotal", r.subtotal) + sum("Shipping", r.shipping) + sum("Tax", r.tax) + sum("Total", r.total, "total") + '</tbody></table>' +
       '<div class="actions">' +
         '<button class="btn ghost" type="button" data-ract="returned">' + (r.returned ? "Undo returned" : "Mark returned") + '</button>' +
+        '<button class="btn ghost" type="button" data-ract="refund">' + (r.refund ? "Undo refund" : "Mark refunded") + '</button>' +
         '<button class="btn ghost" type="button" data-ract="edit">Edit</button>' +
         '<span class="spacer"></span>' +
         '<button class="btn ghost" type="button" data-ract="delete">' + (rcDeleteArmed ? "Tap again to delete" : "Delete") + '</button>' +
-      '</div></div>';
+      '</div>' +
+      (refundOpenId === r.id ? '<div class="rc-grid">' +
+        '<label class="rc-label">Amount refunded<input type="number" id="rf-amount" min="0.01" step="0.01" inputmode="decimal" value="' + (r.total != null ? r.total : "") + '"></label>' +
+        '<label class="rc-label">Date refunded<input type="date" id="rf-date" value="' + keyOf() + '"></label>' +
+        '<div class="actions" style="grid-column:1/-1"><button class="btn" type="button" data-ract="refund-save">Save refund</button>' +
+        '<button class="btn ghost" type="button" data-ract="refund-cancel">Cancel</button></div></div>' : "") +
+    '</div>';
   }
 
   $("soon-list").addEventListener("click", e => {
@@ -1131,6 +1146,16 @@
     const act = b.dataset.ract;
     if (act === "open") { rcOpenId = rcOpenId === r.id ? null : r.id; rcDeleteArmed = false; renderReceipts(); }
     else if (act === "returned") { if (r.returned) delete r.returned; else r.returned = keyOf(); commit(); }
+    else if (act === "refund") {
+      if (r.refund) { delete r.refund; commit(); return; }
+      refundOpenId = r.id; renderReceipts(); $("rf-amount")?.focus();
+    } else if (act === "refund-cancel") { refundOpenId = null; renderReceipts(); }
+    else if (act === "refund-save") {
+      const amount = num($("rf-amount").value);
+      if (!(amount > 0)) { $("rf-amount").focus(); return; }
+      r.refund = { amount, date: $("rf-date").value || keyOf() };
+      refundOpenId = null; commit();
+    }
     else if (act === "edit") { rcFile = null; openRcForm(JSON.parse(JSON.stringify(r))); }
     else if (act === "delete") {
       if (!rcDeleteArmed) { rcDeleteArmed = true; b.textContent = "Tap again to delete"; return; }
@@ -1470,7 +1495,7 @@
   }
 
   prune(); saveLocal(); renderSoundBtn(); render();
-  setInterval(() => { checkReminders(); if (!editingId && !oweEditId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
+  setInterval(() => { checkReminders(); if (!editingId && !oweEditId && !refundOpenId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
 
   (async () => {
     if (!window.claude || !window.claude.use) return;
