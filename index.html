@@ -15,6 +15,10 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)">
 <style>
+  /* Petrona: a narrow serif with soft, small serifs; the files ship with the app so it works offline */
+  @font-face { font-family: "Petrona"; font-weight: 400; font-display: swap; src: url("fonts/petrona-latin-400-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Petrona"; font-weight: 500 600; font-display: swap; src: url("fonts/petrona-latin-600-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Petrona"; font-weight: 700; font-display: swap; src: url("fonts/petrona-latin-700-normal.woff2") format("woff2"); }
   /* Layout: a ruled planner sheet — date block, rings, the day's schedule as a table, then month and patterns */
   :root {
     --c1: #12151b;  /* ink */
@@ -22,7 +26,7 @@
     --c3: #8c93a2;  /* mid slate */
     --c4: #e3e7ee;  /* light blue-grey */
     --c5: #ffffff;  /* paper */
-    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font: "Petrona", "PT Serif", Georgia, serif;
     --mono: var(--font);
     --accent: #3d63d6;       /* buttons and highlights */
     --on-accent: #ffffff;
