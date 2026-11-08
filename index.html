@@ -155,7 +155,7 @@
   .btn { font: inherit; font-weight: 600; font-size: 13.5px; border: 2px solid var(--accent); padding: 8px 18px; cursor: pointer;
     background: var(--accent); color: var(--on-accent); }
   .btn:hover { opacity: .88; }
-  .btn.ghost { background: var(--c5); color: var(--c1); border-width: 1px; padding: 6px 12px; font-size: 12.5px; font-weight: 500; }
+  .btn.ghost { background: var(--c5); color: var(--c1); }  /* same size as the filled buttons, just outlined */
   .btn.ghost:hover { background: var(--c4); }
 
   /* reminders */
@@ -173,6 +173,18 @@
   .rem-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; border: 1px solid var(--c4); margin-top: 10px; }
   .rem-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--c2); min-width: 0; }
   .rem-form .full { grid-column: 1 / -1; }
+  .pick { display: flex; flex-direction: column; gap: 4px; min-width: 0; grid-column: 1 / -1; }
+  .rem-form label.pick-box { flex-direction: row; align-items: center; gap: 0; font-size: 15px; color: var(--c1); }
+  .rem-form label.pick-box.empty { color: var(--c3); }
+  .pick-label { font-size: 12.5px; color: var(--c2); }
+  .pick-row { display: flex; align-items: center; gap: 8px; }
+  /* the phone's own picker sits invisibly over the box, so tapping the box opens it */
+  .pick-box { position: relative; flex: 1; min-width: 0; height: 46px; display: flex; align-items: center; padding: 0 12px;
+    border: 1px solid var(--c3); background: var(--c5); color: var(--c1); font-size: 15px; cursor: pointer; overflow: hidden; }
+  .pick-box.empty { color: var(--c3); }
+  .pick-val { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+  .pick-input { position: absolute; inset: 0; width: 100% !important; height: 100% !important; opacity: 0; border: 0; padding: 0; cursor: pointer; }
+  .pick-clear { font-size: 13px; flex: none; }
   .add-rem { margin-top: 10px; }
   .cal-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .cal-nav h2 { margin: 0; }
@@ -630,13 +642,21 @@
       '<button class="btn ghost" type="button" data-ract2="close">Close</button></li>' : "") +
     (remEditId === r.id ? '<li>' + remFormHTML("edit", r) + '</li>' : "");
   }
+  // date and time are both optional: each is a box that opens the phone's own calendar or time wheel, with a Clear button
+  const pickText = (type, v) => !v ? (type === "date" ? "No date" : "No time")
+    : type === "date" ? dateOf(v).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" }) : fmt(v);
+  function pickHTML(type, id, value, label) {
+    return '<div class="pick"><span class="pick-label">' + label + ' (optional)</span>' +
+      '<div class="pick-row"><label class="pick-box' + (value ? "" : " empty") + '"><span class="pick-val" id="' + id + '-val">' + esc(pickText(type, value)) + '</span>' +
+        '<input class="pick-input" type="' + type + '" id="' + id + '" value="' + (value || "") + '" aria-label="' + label + '"></label>' +
+      '<button type="button" class="linkish pick-clear" data-clear="' + id + '"' + (value ? "" : " hidden") + '>Clear</button></div></div>';
+  }
   function remFormHTML(scope, r) {
-    const dated = scope !== "general";
     const date = r ? (r.date || "") : scope === "today" ? keyOf() : scope === "day" ? selDate : "";
     return '<form class="rem-form" data-rscope="' + scope + '" autocomplete="off">' +
       '<label class="full">Reminder<input type="text" id="rf-text-' + scope + '" maxlength="140" required value="' + (r ? esc(r.text) : "") + '"></label>' +
-      (dated || r ? '<label>Date' + (scope === "edit" ? " (empty = general)" : "") + '<input type="date" id="rf-date-' + scope + '" value="' + date + '"></label>' +
-        '<label>Time (optional)<input type="time" id="rf-time-' + scope + '" value="' + (r && r.time ? r.time : "") + '"></label>' : "") +
+      pickHTML("date", "rf-date-" + scope, date, "Date") +
+      pickHTML("time", "rf-time-" + scope, r && r.time ? r.time : "", "Time") +
       '<div class="actions full"><button class="btn" type="submit">' + (r ? "Save" : "Add") + '</button>' +
       '<button class="btn ghost" type="button" data-rclose="1">Cancel</button></div></form>';
   }
@@ -703,6 +723,18 @@
       state.reminders = state.reminders.filter(x => x.id !== r.id); remOpenId = null; remDelArmed = false; commit();
     }
   });
+  const syncPick = input => {
+    const type = input.type, v = input.value;
+    $(input.id + "-val").textContent = pickText(type, v);
+    input.closest(".pick-box").classList.toggle("empty", !v);
+    input.closest(".pick").querySelector(".pick-clear").hidden = !v;
+  };
+  $("page-reminders").addEventListener("input", e => { if (e.target.classList.contains("pick-input")) syncPick(e.target); });
+  $("page-reminders").addEventListener("change", e => { if (e.target.classList.contains("pick-input")) syncPick(e.target); });
+  $("page-reminders").addEventListener("click", e => {
+    const c = e.target.closest("[data-clear]"); if (!c) return;
+    const input = $(c.dataset.clear); input.value = ""; syncPick(input);
+  });
   $("page-reminders").addEventListener("submit", e => {
     const f = e.target.closest("form[data-rscope]"); if (!f) return;
     e.preventDefault();
@@ -711,9 +743,9 @@
     const r = scope === "edit" ? state.reminders.find(x => x.id === remEditId) : { id: uid() };
     if (!r) return;
     r.text = text; delete r.sample;
-    const date = scope === "general" ? "" : v("date"), time = v("time");
+    const date = v("date"), time = v("time");
     if (date) r.date = date; else delete r.date;
-    if (time && date) r.time = time; else delete r.time;
+    if (time) r.time = time; else delete r.time;
     if (scope !== "edit") state.reminders.push(r);
     remAdd = null; remEditId = null; remOpenId = null; document.activeElement?.blur(); commit();
   });
