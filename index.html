@@ -216,6 +216,15 @@
   .debt-who:hover { text-decoration: underline; text-underline-offset: 3px; }
   .debt-what { font-size: 15px; color: var(--c2); overflow-wrap: anywhere; }
   .debt-dates { font-size: 13px; color: var(--c3); }
+  .parts { list-style: none; margin: 6px 0 0; padding: 0; border-top: 1px solid var(--c4); }
+  .part { display: grid; grid-template-columns: 1fr auto 28px; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--c4); font-size: 14px; }
+  .part-when { color: var(--c2); min-width: 0; overflow-wrap: anywhere; }
+  .part-amt { font-variant-numeric: tabular-nums; }
+  .part .remove { width: 26px; height: 26px; }
+  .add-amt { font-size: 13px; margin-top: 6px; }
+  .add-amt-form { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .add-amt-form input { width: 100%; }
+  .add-amt-form .actions { grid-column: 1 / -1; }
   .debt-amt { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
   .debt-due { display: block; font-size: 12px; font-weight: 600; text-align: right; margin-top: 4px; white-space: nowrap; }
   .debt-due.overdue { background: var(--c1); color: var(--c5); padding: 1px 6px; }
@@ -952,7 +961,25 @@
   const shortDate = k => dateOf(k).toLocaleDateString(undefined, { month: "short", day: "numeric", year: dateOf(k).getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
   const dayDiff = k => Math.round((dateOf(k) - dateOf(keyOf())) / 86400000);
   // debts have dir "owe" (I owe them) or "owed" (they owe me); older entries without dir are "owe"
-  let oweEditId = null, oweDeleteArmed = false;
+  let oweEditId = null, oweDeleteArmed = false, addAmtId = null;
+
+  // an entry can hold several amounts (d.parts) — its amount is their sum
+  const round2 = n => Math.round(n * 100) / 100;
+  function syncParts(d) {
+    if (!d.parts) return;
+    if (d.parts.length <= 1) {
+      const p = d.parts[0];
+      if (p) { d.amount = p.amount; d.date = p.date; if (p.what && !d.what) d.what = p.what; }
+      delete d.parts; return;
+    }
+    d.amount = round2(d.parts.reduce((a, p) => a + p.amount, 0));
+    d.date = d.parts.map(p => p.date).sort()[0];
+  }
+  function addPart(d, part) {
+    if (!d.parts) d.parts = [{ id: uid(), amount: d.amount, what: "", date: d.date }];
+    d.parts.push({ id: uid(), ...part });
+    syncParts(d);
+  }
   const showPaid = { owe: false, owed: false };
   const SIDES = {
     owe: { title: "I owe", who: "Who I owe", none: "You don't owe anyone right now", people: n => "to " + n + (n === 1 ? " person" : " people"), empty: "Nothing owed. Add an entry above." },
@@ -983,7 +1010,7 @@
         '<label>Due date (if any)<input type="date" id="' + side + '-due"></label>' +
         '<label class="full">Category' + catSelectHTML(side + "-cat", "") + '</label>' +
         '<button class="btn" type="submit">Add</button>' +
-      '</form></section>' +
+      '</form><p class="muted" id="' + side + '-msg" role="status" style="margin-top:8px"></p></section>' +
       '<section><h2>Still open</h2><ul class="debts" id="' + side + '-list"></ul></section>' +
       '<section id="' + side + '-people-section"><h2>By person</h2><div class="people" id="' + side + '-people"></div></section>' +
       '<section id="' + side + '-paid-section"><h2><button type="button" class="linkish" id="' + side + '-toggle-paid" style="font-size:20px;font-weight:700;color:var(--c1);text-decoration:none"></button></h2>' +
@@ -994,7 +1021,9 @@
   function debtEditHTML(d) {
     return '<form class="debt-form debt-edit" id="debt-edit-form" autocomplete="off">' +
       '<label>' + SIDES[sideOf(d)].who + '<input type="text" id="de-who" maxlength="80" required value="' + esc(d.who) + '"></label>' +
-      '<label>How much<input type="number" id="de-amount" min="0.01" step="0.01" inputmode="decimal" required value="' + d.amount + '"></label>' +
+      (d.parts
+        ? '<label>Total (' + d.parts.length + ' amounts)<input type="number" id="de-amount" value="' + d.amount + '" disabled></label>'
+        : '<label>How much<input type="number" id="de-amount" min="0.01" step="0.01" inputmode="decimal" required value="' + d.amount + '"></label>') +
       '<label class="full">What it\'s for<input type="text" id="de-what" maxlength="140" value="' + esc(d.what || "") + '"></label>' +
       '<label>When it happened<input type="date" id="de-date" required value="' + d.date + '"></label>' +
       '<label>Due date (if any)<input type="date" id="de-due" value="' + (d.due || "") + '"></label>' +
@@ -1014,7 +1043,20 @@
       '<button class="check" type="button" data-dact="paid" aria-pressed="' + !!d.paid + '" aria-label="' + (d.paid ? "Mark not paid: " : "Mark paid: ") + esc(d.who) + '">' + CHECK + '</button>' +
       '<div><button class="debt-who" type="button" data-dact="edit" aria-expanded="' + (oweEditId === d.id) + '">' + esc(d.who) + '</button>' +
         (d.what ? '<div class="debt-what">' + esc(d.what) + '</div>' : "") +
-        '<div class="debt-dates">' + esc(dates.join(" · ")) + '</div></div>' +
+        '<div class="debt-dates">' + esc(dates.join(" · ")) + '</div>' +
+        (d.parts ? '<ul class="parts">' + [...d.parts].sort((a, b) => a.date < b.date ? -1 : 1).map(p =>
+          '<li class="part"><span class="part-when">' + esc(shortDate(p.date) + (p.what ? " · " + p.what : "")) + '</span>' +
+          '<span class="part-amt">' + money(p.amount) + '</span>' +
+          '<button class="remove" type="button" data-dact="del-part" data-part="' + p.id + '" aria-label="Remove ' + money(p.amount) + ' from ' + esc(d.who) + '">' + CROSS + '</button></li>').join("") + '</ul>' : "") +
+        (d.paid ? "" : addAmtId === d.id
+          ? '<div class="add-amt-form">' +
+              '<input type="number" id="aa-amount" min="0.01" step="0.01" inputmode="decimal" placeholder="Amount" aria-label="Amount">' +
+              '<input type="date" id="aa-date" value="' + keyOf() + '" aria-label="Date">' +
+              '<input type="text" id="aa-what" maxlength="140" placeholder="What it\'s for (optional)" aria-label="What it\'s for" style="grid-column:1/-1">' +
+              '<div class="actions"><button class="btn" type="button" data-dact="add-amt-save">Add amount</button>' +
+              '<button class="btn ghost" type="button" data-dact="add-amt-cancel">Cancel</button></div></div>'
+          : '<button class="linkish add-amt" type="button" data-dact="add-amt">+ Add amount</button>') +
+      '</div>' +
       '<div><span class="debt-amt">' + money(d.amount) + '</span>' + (due ? '<span class="debt-due ' + due.cls + '">' + due.text + '</span>' : "") + '</div>' +
       '<button class="remove" type="button" data-dact="remove" aria-label="Remove ' + esc(d.who) + '">' + CROSS + '</button>' +
       (oweEditId === d.id ? debtEditHTML(d) : "") +
@@ -1094,10 +1136,10 @@
     if (f) f.addEventListener("submit", e => {
       e.preventDefault();
       const d = state.debts.find(x => x.id === oweEditId); if (!d) return;
-      const amount = Math.round(parseFloat($("de-amount").value) * 100) / 100;
+      const amount = d.parts ? d.amount : Math.round(parseFloat($("de-amount").value) * 100) / 100;
       if (!$("de-who").value.trim() || !(amount > 0)) return;
       d.who = $("de-who").value.trim(); d.amount = amount; d.what = $("de-what").value.trim();
-      d.date = $("de-date").value || d.date;
+      if (!d.parts) d.date = $("de-date").value || d.date;
       if ($("de-due").value) d.due = $("de-due").value; else delete d.due;
       const cat = readCat("de-cat"); if (cat) d.cat = cat; else delete d.cat;
       delete d.sample;
@@ -1131,6 +1173,16 @@
     const id = li.dataset.id, d = state.debts.find(x => x.id === id); if (!d) return;
     const act = b.dataset.dact;
     if (act === "paid") { if (d.paid) delete d.paid; else d.paid = keyOf(); commit(); }
+    else if (act === "add-amt") { addAmtId = id; renderOwe(); $("aa-amount")?.focus(); }
+    else if (act === "add-amt-cancel") { addAmtId = null; renderOwe(); }
+    else if (act === "add-amt-save") {
+      const amount = round2(parseFloat($("aa-amount").value));
+      if (!(amount > 0)) { $("aa-amount").focus(); return; }
+      addPart(d, { amount, what: $("aa-what").value.trim(), date: $("aa-date").value || keyOf() });
+      addAmtId = null; commit();
+    } else if (act === "del-part") {
+      d.parts = d.parts.filter(p => p.id !== b.dataset.part); syncParts(d); commit();
+    }
     else if (act === "edit") { oweEditId = oweEditId === id ? null : id; oweDeleteArmed = false; renderOwe(); if (oweEditId) $("de-who")?.focus(); }
     else if (act === "cancel") { oweEditId = null; oweDeleteArmed = false; renderOwe(); }
     else if (act === "remove" || act === "delete") {
@@ -1138,17 +1190,30 @@
       state.debts = state.debts.filter(x => x.id !== id); oweEditId = null; oweDeleteArmed = false; commit();
     }
   });
+  $("page-owe").addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.target.closest(".add-amt-form")) { e.preventDefault(); $("page-owe").querySelector('[data-dact="add-amt-save"]')?.click(); }
+  });
   $("page-owe").addEventListener("submit", e => {
     const f = e.target.closest("form[data-side]"); if (!f) return;
     e.preventDefault();
     const side = f.dataset.side, v = id => $(side + "-" + id).value;
     const who = v("who").trim(), amount = Math.round(parseFloat(v("amount")) * 100) / 100;
     if (!who || !(amount > 0)) return;
-    const d = { id: uid(), who, amount, what: v("what").trim(), date: v("date") || keyOf() };
-    if (side === "owed") d.dir = "owed";
-    if (v("due")) d.due = v("due");
-    const cat = readCat(side + "-cat"); if (cat) d.cat = cat;
-    state.debts.push(d);
+    const cat = readCat(side + "-cat");
+    // same person, same side and category, still open: add this as another amount on that entry
+    const same = state.debts.find(x => !x.paid && sideOf(x) === side && x.who.trim().toLowerCase() === who.toLowerCase() && (x.cat || "") === (cat || ""));
+    if (same) {
+      addPart(same, { amount, what: v("what").trim(), date: v("date") || keyOf() });
+      if (v("due")) same.due = v("due");
+      $(side + "-msg").textContent = "Added to " + same.who + "'s entry. They now have " + same.parts.length + " amounts, " + money(same.amount) + " in total.";
+    } else {
+      const d = { id: uid(), who, amount, what: v("what").trim(), date: v("date") || keyOf() };
+      if (side === "owed") d.dir = "owed";
+      if (v("due")) d.due = v("due");
+      if (cat) d.cat = cat;
+      state.debts.push(d);
+      $(side + "-msg").textContent = "";
+    }
     ["who", "amount", "what", "due"].forEach(x => { $(side + "-" + x).value = ""; });
     $(side + "-cat-new").value = ""; $(side + "-cat-new").hidden = true;
     $(side + "-cat").innerHTML = catOptions(cat);
@@ -1606,7 +1671,7 @@
   }
 
   prune(); saveLocal(); renderSoundBtn(); render();
-  setInterval(() => { checkReminders(); if (!editingId && !oweEditId && !refundOpenId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
+  setInterval(() => { checkReminders(); if (!editingId && !oweEditId && !refundOpenId && !addAmtId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
 
   (async () => {
     if (!window.claude || !window.claude.use) return;
