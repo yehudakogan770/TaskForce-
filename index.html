@@ -208,7 +208,8 @@
   .debt-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .debt-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--c2); min-width: 0; }
   .debt-form .full { grid-column: 1 / -1; }
-  .debt-form .btn { grid-column: 1 / -1; justify-self: start; }
+  .debt-form .btn { justify-self: start; }
+  .add-toggle { width: 100%; }
   input[type="number"], input[type="date"] { font: inherit; color: var(--c1); background: var(--c5); border: 1px solid var(--c3);
     padding: 10px 12px; outline: none; min-width: 0; width: 100%; }
   .debt-form input[type="text"] { width: 100%; }
@@ -244,6 +245,14 @@
   .debt-cat { display: flex; justify-content: space-between; gap: 12px; padding: 16px 0 6px; border-bottom: 1px solid var(--c3);
     font-size: 14px; font-weight: 700; }
   .debt-cat span:last-child { font-variant-numeric: tabular-nums; }
+  .debt-sub { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0 4px 14px; border-bottom: 1px solid var(--c4);
+    font-size: 13px; font-weight: 600; color: var(--c2); }
+  .debt-sub span:last-child { font-variant-numeric: tabular-nums; }
+  .person.sub { font-size: 14px; color: var(--c2); }
+  .person.sub span:first-child { padding-left: 16px; }
+  .cat-list { display: flex; flex-direction: column; gap: 12px; }
+  .cat-block { border: 1px solid var(--c4); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .cat-block-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; }
   .cat-chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .cat-chip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--c1); padding: 2px 2px 2px 10px; font-size: 14px; }
   .cat-chip .remove { width: 26px; height: 26px; }
@@ -459,7 +468,7 @@
 
     <section aria-labelledby="cats-title">
       <h2 id="cats-title">Categories</h2>
-      <div class="cat-chips" id="cat-chips"></div>
+      <div class="cat-list" id="cat-chips"></div>
       <form class="cat-add" id="cat-form" autocomplete="off">
         <input type="text" id="cat-new" maxlength="40" placeholder="New category, like Family or Work" aria-label="New category">
         <button class="btn ghost" type="submit">Add</button>
@@ -573,7 +582,7 @@
     subtotal: 26.46, shipping: 0, tax: 2.35, total: 28.81, sample: true,
   }];
   const blank = () => ({ items: SAMPLE, done: {}, sched: {}, skipped: {}, snoozed: {}, totals: {}, prefs: {}, debts: SAMPLE_DEBTS, receipts: SAMPLE_RECEIPTS, debtCats: [] });
-  const normalize = s => ({ ...blank(), ...s, items: Array.isArray(s.items) ? s.items : [], debtCats: Array.isArray(s.debtCats) ? s.debtCats : [] });
+  const normalize = s => ({ ...blank(), ...s, items: Array.isArray(s.items) ? s.items : [], debtCats: (Array.isArray(s.debtCats) ? s.debtCats : []).map(c => typeof c === "string" ? { name: c, subs: [] } : { name: c.name, subs: c.subs || [] }) });
   let state = blank();
   try { const saved = JSON.parse(localStorage.getItem(LS_KEY)); if (saved && Array.isArray(saved.items)) state = normalize(saved); } catch {}
 
@@ -923,7 +932,7 @@
     state.items.push(item);
     $("new-text").value = ""; $("new-end").value = ""; $("new-note").value = "";
     $("new-days").innerHTML = chipsHTML(ALL_DAYS, false);
-    $("new-text").focus();
+    document.activeElement?.blur();  // close the keyboard
     commit();
   });
 
@@ -1014,14 +1023,15 @@
     $("col-" + side).innerHTML =
       '<h2 class="side-title">' + L.title + '</h2>' +
       '<div class="owe-total"><span class="big" id="' + side + '-big">$0.00</span><span class="sub" id="' + side + '-sub"></span></div>' +
-      '<section><h2>Add</h2><form class="debt-form" data-side="' + side + '" autocomplete="off">' +
+      '<section><button class="btn add-toggle" type="button" id="' + side + '-open-add">+ Add amount</button>' +
+      '<form class="debt-form" data-side="' + side + '" id="' + side + '-form" autocomplete="off" hidden>' +
         '<label>' + L.who + '<input type="text" id="' + side + '-who" maxlength="80"></label>' +
         '<label>How much<input type="number" id="' + side + '-amount" min="0.01" step="0.01" inputmode="decimal" required></label>' +
         '<label class="full">What it\'s for<input type="text" id="' + side + '-what" maxlength="140"></label>' +
         '<label>When it happened<input type="date" id="' + side + '-date" required></label>' +
         '<label>Due date (if any)<input type="date" id="' + side + '-due"></label>' +
-        '<label class="full">Category' + catSelectHTML(side + "-cat", "") + '</label>' +
-        '<button class="btn" type="submit">Add</button>' +
+        catSelectHTML(side + "-cat", "", "") +
+        '<div class="actions full"><button class="btn" type="submit">Add</button><button class="btn ghost" type="button" data-close-add="' + side + '">Cancel</button></div>' +
       '</form><p class="muted" id="' + side + '-msg" role="status" style="margin-top:8px"></p></section>' +
       '<section><h2>Still open</h2><ul class="debts" id="' + side + '-list"></ul></section>' +
       '<section id="' + side + '-people-section"><h2>By category</h2><div class="people" id="' + side + '-people"></div></section>' +
@@ -1039,7 +1049,7 @@
       '<label class="full">What it\'s for<input type="text" id="de-what" maxlength="140" value="' + esc(d.what || "") + '"></label>' +
       '<label>When it happened<input type="date" id="de-date" required value="' + d.date + '"></label>' +
       '<label>Due date (if any)<input type="date" id="de-due" value="' + (d.due || "") + '"></label>' +
-      '<label class="full">Category' + catSelectHTML("de-cat", d.cat || "") + '</label>' +
+      catSelectHTML("de-cat", d.cat || "", d.sub || "") +
       '<div class="actions full"><button class="btn" type="submit">Save</button>' +
       '<button class="btn ghost" type="button" data-dact="cancel">Cancel</button><span class="spacer"></span>' +
       '<button class="btn ghost" type="button" data-dact="delete">' + (oweDeleteArmed ? "Tap again to delete" : "Delete") + '</button></div>' +
@@ -1047,7 +1057,7 @@
   }
 
   // what an entry is called: the person, else what it's for, else its category
-  const debtTitle = d => (d.who || "").trim() || d.what || d.cat || "Amount";
+  const debtTitle = d => (d.who || "").trim() || d.what || d.sub || d.cat || "Amount";
 
   function debtHTML(d) {
     const due = d.paid ? null : dueLabel(d);
@@ -1088,26 +1098,29 @@
     });
     const paid = debts.filter(d => d.paid).sort((a, b) => a.paid < b.paid ? 1 : -1);
     const overdue = open.filter(d => d.due && dayDiff(d.due) < 0);
-    const people = {};  // totals per category
-    open.forEach(d => { const k = state.debtCats.includes(d.cat) ? d.cat : "No category"; people[k] = (people[k] || 0) + d.amount; });
 
     $(side + "-big").textContent = money(open.reduce((a, d) => a + d.amount, 0));
     const bits = [open.length ? L.count(open.length) : L.none];
     if (overdue.length) bits.push(overdue.length + " overdue (" + money(overdue.reduce((a, d) => a + d.amount, 0)) + ")");
     $(side + "-sub").textContent = bits.join(" · ");
     let listHTML = open.length ? "" : '<li class="empty">' + L.empty + '</li>';
-    if (open.some(d => d.cat)) {
-      // grouped under each category, then anything without one
-      for (const c of [...state.debtCats, ""]) {
-        const group = open.filter(d => (state.debtCats.includes(d.cat) ? d.cat : "") === c);
-        if (!group.length) continue;
-        listHTML += '<li class="debt-cat"><span>' + esc(c || "No category") + '</span><span>' + money(group.reduce((a, d) => a + d.amount, 0)) + '</span></li>' + group.map(debtHTML).join("");
+    const sum = list => list.reduce((a, d) => a + d.amount, 0);
+    const groups = groupDebts(open);
+    let summary = "";
+    if (groups.some(g => g.cat)) {
+      // category, then entries with no subcategory, then each subcategory with its entries
+      for (const g of groups) {
+        listHTML += '<li class="debt-cat"><span>' + esc(g.cat || "No category") + '</span><span>' + money(sum(g.all)) + '</span></li>' + g.plain.map(debtHTML).join("");
+        summary += '<div class="person"><span>' + esc(g.cat || "No category") + '</span><span>' + money(sum(g.all)) + '</span></div>';
+        for (const sg of g.subs) {
+          listHTML += '<li class="debt-sub"><span>' + esc(sg.sub) + '</span><span>' + money(sum(sg.list)) + '</span></li>' + sg.list.map(debtHTML).join("");
+          summary += '<div class="person sub"><span>' + esc(sg.sub) + '</span><span>' + money(sum(sg.list)) + '</span></div>';
+        }
       }
     } else listHTML += open.map(debtHTML).join("");
     $(side + "-list").innerHTML = listHTML;
-    const names = Object.entries(people).sort((a, b) => b[1] - a[1]);
-    $(side + "-people-section").hidden = !open.some(d => d.cat);
-    $(side + "-people").innerHTML = names.map(([n, v]) => '<div class="person"><span>' + esc(n) + '</span><span>' + money(v) + '</span></div>').join("");
+    $(side + "-people-section").hidden = !summary;
+    $(side + "-people").innerHTML = summary;
     $(side + "-paid-section").hidden = !paid.length;
     $(side + "-toggle-paid").textContent = "Paid (" + paid.length + ") " + (showPaid[side] ? "▾" : "▸");
     $(side + "-toggle-paid").setAttribute("aria-expanded", showPaid[side]);
@@ -1115,35 +1128,83 @@
     $(side + "-paid-list").innerHTML = paid.map(debtHTML).join("");
   }
 
-  function catSelectHTML(id, value) {
-    return '<select class="cat-select" id="' + id + '">' + catOptions(value) + '</select>' +
-      '<input type="text" id="' + id + '-new" maxlength="40" placeholder="Name of the new category" style="margin-top:6px" hidden>';
+  function catByName(n) { return state.debtCats.find(c => c.name === n); }  // a function so the forms built early can use it
+  const validCat = d => catByName(d.cat) ? d.cat : "";
+  const validSub = d => { const c = catByName(d.cat); return c && c.subs.includes(d.sub) ? d.sub : ""; };
+  function groupDebts(list) {
+    const out = [];
+    for (const name of [...state.debtCats.map(c => c.name), ""]) {
+      const all = list.filter(d => validCat(d) === name); if (!all.length) continue;
+      const c = catByName(name);
+      out.push({ cat: name, all, plain: all.filter(d => !validSub(d)),
+        subs: (c ? c.subs : []).map(sub => ({ sub, list: all.filter(d => validSub(d) === sub) })).filter(sg => sg.list.length) });
+    }
+    return out;
+  }
+
+  // category and subcategory pickers; each can make a new one on the spot
+  function catSelectHTML(id, cat, sub) {
+    return '<label class="full">Category<select class="cat-select" id="' + id + '">' + catOptions(cat) + '</select>' +
+        '<input type="text" id="' + id + '-new" maxlength="40" placeholder="Name of the new category" style="margin-top:6px" hidden></label>' +
+      '<label class="full" id="' + id + '-subwrap"' + (cat ? "" : " hidden") + '>Subcategory (optional)' +
+        '<select class="cat-select sub-select" id="' + id + '-sub">' + subOptions(cat, sub) + '</select>' +
+        '<input type="text" id="' + id + '-sub-new" maxlength="40" placeholder="Name of the new subcategory" style="margin-top:6px" hidden></label>';
   }
   function catOptions(value) {
     return '<option value="">No category</option>' +
-      state.debtCats.map(c => '<option value="' + esc(c) + '"' + (c === value ? " selected" : "") + '>' + esc(c) + '</option>').join("") +
+      state.debtCats.map(c => '<option value="' + esc(c.name) + '"' + (c.name === value ? " selected" : "") + '>' + esc(c.name) + '</option>').join("") +
       '<option value="__new">+ New category…</option>';
   }
+  function subOptions(cat, value) {
+    const c = catByName(cat);
+    return '<option value="">No subcategory</option>' +
+      (c ? c.subs : []).map(n => '<option value="' + esc(n) + '"' + (n === value ? " selected" : "") + '>' + esc(n) + '</option>').join("") +
+      '<option value="__new">+ New subcategory…</option>';
+  }
   function addCat(name) {
-    name = name.trim().slice(0, 40);
-    const found = state.debtCats.find(c => c.toLowerCase() === name.toLowerCase());
+    name = name.trim().slice(0, 40); if (!name) return "";
+    const found = state.debtCats.find(c => c.name.toLowerCase() === name.toLowerCase());
+    if (found) return found.name;
+    state.debtCats.push({ name, subs: [] });
+    return name;
+  }
+  function addSub(cat, name) {
+    const c = catByName(cat); name = name.trim().slice(0, 40); if (!c || !name) return "";
+    const found = c.subs.find(n => n.toLowerCase() === name.toLowerCase());
     if (found) return found;
-    if (name) state.debtCats.push(name);
+    c.subs.push(name);
     return name;
   }
   function readCat(id) {
     const sel = $(id);
-    if (sel.value === "__new") return addCat($(id + "-new").value);
-    return sel.value;
+    const cat = sel.value === "__new" ? addCat($(id + "-new").value) : sel.value;
+    if (!cat) return { cat: "", sub: "" };
+    const ss = $(id + "-sub");
+    const sub = ss.value === "__new" ? addSub(cat, $(id + "-sub-new").value) : (catByName(cat)?.subs.includes(ss.value) ? ss.value : "");
+    return { cat, sub };
+  }
+  function setPickers(id, cat, sub) {
+    $(id).innerHTML = catOptions(cat);
+    $(id + "-new").value = ""; $(id + "-new").hidden = true;
+    $(id + "-sub").innerHTML = subOptions(cat, sub);
+    $(id + "-sub-new").value = ""; $(id + "-sub-new").hidden = true;
+    $(id + "-subwrap").hidden = !cat;
   }
 
   function renderOwe() {
     for (const side of ["owe", "owed"]) {
-      const sel = $(side + "-cat");
-      if (sel.value !== "__new") { const v = state.debtCats.includes(sel.value) ? sel.value : ""; sel.innerHTML = catOptions(v); }
+      const id = side + "-cat", sel = $(id), ss = $(id + "-sub");
+      if (sel.value === "__new" || ss.value === "__new") continue;  // mid-typing a new name
+      const cat = catByName(sel.value) ? sel.value : "";
+      setPickers(id, cat, catByName(cat)?.subs.includes(ss.value) ? ss.value : "");
     }
     $("cat-chips").innerHTML = state.debtCats.length
-      ? state.debtCats.map((c, i) => '<span class="cat-chip">' + esc(c) + '<button class="remove" type="button" data-cat-del="' + i + '" aria-label="Remove category ' + esc(c) + '">' + CROSS + '</button></span>').join("")
+      ? state.debtCats.map((c, i) => '<div class="cat-block"><div class="cat-block-head"><span>' + esc(c.name) + '</span>' +
+          '<button class="remove" type="button" data-cat-del="' + i + '" aria-label="Remove category ' + esc(c.name) + '">' + CROSS + '</button></div>' +
+          (c.subs.length ? '<div class="cat-chips">' + c.subs.map((n, j) => '<span class="cat-chip">' + esc(n) +
+            '<button class="remove" type="button" data-sub-del="' + i + '|' + j + '" aria-label="Remove subcategory ' + esc(n) + '">' + CROSS + '</button></span>').join("") + '</div>' : "") +
+          '<div class="cat-add" style="margin-top:0"><input type="text" id="sub-new-' + i + '" maxlength="40" placeholder="New subcategory, like Gas" aria-label="New subcategory for ' + esc(c.name) + '">' +
+          '<button class="btn ghost" type="button" data-sub-add="' + i + '">Add</button></div></div>').join("")
       : '<p class="muted">No categories yet. Add one here or while adding an entry.</p>';
     renderSide("owe"); renderSide("owed");
     $("debt-sample-notice").hidden = !(state.debts || []).some(d => d.sample);
@@ -1156,7 +1217,9 @@
       d.who = $("de-who").value.trim(); d.amount = amount; d.what = $("de-what").value.trim();
       if (!d.parts) d.date = $("de-date").value || d.date;
       if ($("de-due").value) d.due = $("de-due").value; else delete d.due;
-      const cat = readCat("de-cat"); if (cat) d.cat = cat; else delete d.cat;
+      const { cat, sub } = readCat("de-cat");
+      if (cat) d.cat = cat; else delete d.cat;
+      if (sub) d.sub = sub; else delete d.sub;
       delete d.sample;
       oweEditId = null; commit();
     });
@@ -1166,6 +1229,12 @@
     const sel = e.target.closest("select.cat-select"); if (!sel) return;
     const box = $(sel.id + "-new");
     box.hidden = sel.value !== "__new";
+    if (!sel.classList.contains("sub-select")) {
+      // a different category has different subcategories
+      $(sel.id + "-sub").innerHTML = subOptions(sel.value, "");
+      $(sel.id + "-sub-new").hidden = true;
+      $(sel.id + "-subwrap").hidden = !sel.value;
+    }
     if (!box.hidden) box.focus();
   });
   $("cat-form").addEventListener("submit", e => {
@@ -1176,10 +1245,23 @@
   $("page-owe").addEventListener("click", e => {
     const del = e.target.closest("[data-cat-del]");
     if (del) {
-      const name = state.debtCats[+del.dataset.catDel];
-      state.debtCats = state.debtCats.filter(c => c !== name);
-      state.debts.forEach(d => { if (d.cat === name) delete d.cat; });
+      const name = state.debtCats[+del.dataset.catDel].name;
+      state.debtCats = state.debtCats.filter(c => c.name !== name);
+      state.debts.forEach(d => { if (d.cat === name) { delete d.cat; delete d.sub; } });
       commit(); return;
+    }
+    const sdel = e.target.closest("[data-sub-del]");
+    if (sdel) {
+      const [i, j] = sdel.dataset.subDel.split("|").map(Number), c = state.debtCats[i], name = c.subs[j];
+      c.subs = c.subs.filter(n => n !== name);
+      state.debts.forEach(d => { if (d.cat === c.name && d.sub === name) delete d.sub; });
+      commit(); return;
+    }
+    const sadd = e.target.closest("[data-sub-add]");
+    if (sadd) {
+      const i = +sadd.dataset.subAdd, input = $("sub-new-" + i);
+      if (addSub(state.debtCats[i].name, input.value)) commit();
+      return;
     }
     const tp = e.target.closest('[id$="-toggle-paid"]');
     if (tp) { const side = tp.id.split("-")[0]; showPaid[side] = !showPaid[side]; renderOwe(); return; }
@@ -1194,6 +1276,7 @@
       const amount = round2(parseFloat($("aa-amount").value));
       if (!(amount > 0)) { $("aa-amount").focus(); return; }
       addPart(d, { amount, what: $("aa-what").value.trim(), date: $("aa-date").value || keyOf() });
+      document.activeElement?.blur();
       addAmtId = null; commit();
     } else if (act === "del-part") {
       d.parts = d.parts.filter(p => p.id !== b.dataset.part); syncParts(d); commit();
@@ -1205,8 +1288,21 @@
       state.debts = state.debts.filter(x => x.id !== id); oweEditId = null; oweDeleteArmed = false; commit();
     }
   });
+  // the add form stays folded away until "+ Add amount" is tapped
+  function closeAddForm(side) {
+    document.activeElement?.blur();
+    $(side + "-form").hidden = true;
+    $(side + "-open-add").hidden = false;
+  }
+  for (const side of ["owe", "owed"]) {
+    $(side + "-open-add").onclick = () => {
+      $(side + "-form").hidden = false; $(side + "-open-add").hidden = true; $(side + "-msg").textContent = "";
+    };
+  }
+  $("page-owe").addEventListener("click", e => { const c = e.target.closest("[data-close-add]"); if (c) closeAddForm(c.dataset.closeAdd); });
   $("page-owe").addEventListener("keydown", e => {
     if (e.key === "Enter" && e.target.closest(".add-amt-form")) { e.preventDefault(); $("page-owe").querySelector('[data-dact="add-amt-save"]')?.click(); }
+    if (e.key === "Enter" && e.target.id && e.target.id.startsWith("sub-new-")) { e.preventDefault(); e.target.nextElementSibling.click(); }
   });
   $("page-owe").addEventListener("submit", e => {
     const f = e.target.closest("form[data-side]"); if (!f) return;
@@ -1214,9 +1310,10 @@
     const side = f.dataset.side, v = id => $(side + "-" + id).value;
     const who = v("who").trim(), amount = Math.round(parseFloat(v("amount")) * 100) / 100;
     if (!(amount > 0)) return;
-    const cat = readCat(side + "-cat");
-    // same category (and same name, if any) on this side, still open: add this as another amount on that entry
-    const same = (who || cat) && state.debts.find(x => !x.paid && sideOf(x) === side && (x.who || "").trim().toLowerCase() === who.toLowerCase() && (x.cat || "") === (cat || ""));
+    const { cat, sub } = readCat(side + "-cat");
+    // same category and subcategory (and same name, if any) on this side, still open: add this as another amount on that entry
+    const same = (who || cat) && state.debts.find(x => !x.paid && sideOf(x) === side && (x.who || "").trim().toLowerCase() === who.toLowerCase() &&
+      (x.cat || "") === cat && (x.sub || "") === sub);
     if (same) {
       addPart(same, { amount, what: v("what").trim(), date: v("date") || keyOf() });
       if (v("due")) same.due = v("due");
@@ -1226,14 +1323,14 @@
       if (side === "owed") d.dir = "owed";
       if (v("due")) d.due = v("due");
       if (cat) d.cat = cat;
+      if (sub) d.sub = sub;
       state.debts.push(d);
       $(side + "-msg").textContent = "";
     }
     ["who", "amount", "what", "due"].forEach(x => { $(side + "-" + x).value = ""; });
-    $(side + "-cat-new").value = ""; $(side + "-cat-new").hidden = true;
-    $(side + "-cat").innerHTML = catOptions(cat);
+    setPickers(side + "-cat", cat, sub);
     $(side + "-date").value = keyOf();
-    $(side + "-who").focus();
+    closeAddForm(side);
     commit();
   });
   $("clear-debt-samples").onclick = () => { state.debts = state.debts.filter(d => !d.sample); commit(); };
