@@ -225,6 +225,64 @@
   .cev.done { text-decoration: line-through; color: var(--c3); border-left-color: var(--c3); }
   .cmore { font-size: 10px; color: var(--c3); padding-left: 3px; }
 
+  /* Month / List switch, scrolling months, list cards, colors, floating + */
+  .seg2 { display: inline-flex; border: 1px solid var(--c4); }
+  .seg2 button { font: inherit; font-size: 13.5px; font-weight: 600; height: 34px; padding: 0 12px; border: 0; background: var(--c5); color: var(--c2); cursor: pointer; }
+  .seg2 button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+  .cscroll { height: min(70vh, 640px); overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y proximity; border-top: 1px solid var(--c4); }
+  .cmonth { scroll-snap-align: start; }
+  .cmonth-head { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+    padding: 10px max(16px, env(safe-area-inset-left, 0px)) 6px; background: var(--c5); border-bottom: 1px solid var(--c4); }
+  .cmonth-head b { font-size: 16px; }
+  .cmonth-head span { font-size: 13px; color: var(--c2); unicode-bidi: plaintext; }
+  .cmonth .cgrid { border-top: 0; }
+  .cday.blank { cursor: default; }
+  .cday.blank:active { background: var(--c5); }
+  .cev { border-left-color: var(--rc, var(--accent)); background: color-mix(in srgb, var(--rc, var(--accent)) 16%, var(--c5)); }
+  .agenda { display: flex; flex-direction: column; gap: 14px; }
+  .ag-day h3 { margin: 0 0 6px; font-size: 14px; display: flex; justify-content: space-between; gap: 8px; }
+  .ag-day h3 span { font-weight: 400; color: var(--c2); font-size: 13px; unicode-bidi: plaintext; }
+  .ag-card { display: flex; gap: 10px; align-items: baseline; width: 100%; margin-top: 6px; padding: 10px 12px; border: 0; border-left: 4px solid var(--rc, var(--accent));
+    background: color-mix(in srgb, var(--rc, var(--accent)) 14%, var(--c5)); color: var(--c1); font: inherit; text-align: left; cursor: pointer; }
+  .ag-card.done { color: var(--c3); text-decoration: line-through; }
+  .ag-time { flex: none; font-size: 13px; font-weight: 600; min-width: 58px; }
+  .ag-empty { color: var(--c3); font-size: 13.5px; }
+  .rem { border-left: 3px solid transparent; }
+  .rem[style] { border-left-color: var(--rc); padding-left: 6px; }
+  .colors { display: flex; gap: 8px; flex-wrap: wrap; }
+  .colors button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--c5); outline: 1px solid var(--c4); background: var(--sw); cursor: pointer; }
+  .colors button[aria-pressed="true"] { outline: 2px solid var(--c1); }
+  .fab { position: sticky; bottom: max(20px, env(safe-area-inset-bottom, 0px)); align-self: flex-end; z-index: 5; width: 54px; height: 54px; margin-top: -40px;
+    border-radius: 50%; border: 0; background: var(--accent); color: var(--on-accent); font-size: 30px; line-height: 1; box-shadow: 0 6px 18px rgba(0,0,0,.22); cursor: pointer; }
+
+  /* day sheet: slides up from the bottom; week strip, then an hour timeline with a red "now" line */
+  .sheet-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--c4); align-self: center; margin-top: -8px; }
+  .wstrip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+  .wstrip button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 0; border: 0; background: none; color: var(--c1); font: inherit; cursor: pointer; }
+  .wstrip .wl { font-size: 11px; color: var(--c3); }
+  .wstrip .wn { width: 30px; height: 30px; display: grid; place-items: center; font-size: 14px; font-weight: 600; border-radius: 50%; }
+  .wstrip .wh { font-size: 10px; color: var(--c3); }
+  .wstrip button.today .wn { color: var(--accent); }
+  .wstrip button.sel .wn { background: var(--accent); color: var(--on-accent); }
+  .wstrip .wdot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+  .wstrip .wdot.none { background: transparent; }
+  .any-title { font-size: 12.5px; color: var(--c2); margin: 0 0 4px; }
+  .tline { position: relative; border-top: 1px solid var(--c4); }
+  .tl-hour { position: relative; height: 48px; border-bottom: 1px solid var(--c4); }
+  .tl-hour span { position: absolute; left: 0; top: 3px; font-size: 11px; color: var(--c3); width: 46px; }
+  .tl-block { position: absolute; left: 52px; right: 4px; min-height: 22px; padding: 2px 8px; border: 0; border-left: 3px solid var(--rc, var(--accent));
+    background: color-mix(in srgb, var(--rc, var(--accent)) 18%, var(--c5)); color: var(--c1); font: inherit; font-size: 12.5px; text-align: left;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; z-index: 1; }
+  .tl-block.done { color: var(--c3); text-decoration: line-through; }
+  .tl-now { position: absolute; left: 46px; right: 0; height: 2px; background: #e5484d; z-index: 2; }
+  .tl-now::before { content: ""; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: #e5484d; }
+  @media (max-width: 700px) {
+    .sheet-wrap { align-items: flex-end; padding: max(40px, env(safe-area-inset-top, 0px)) 0 0; }
+    .sheet { max-width: none; max-height: 100%; border-left: 0; border-right: 0; border-bottom: 0;
+      padding-bottom: max(18px, env(safe-area-inset-bottom, 0px)); animation: sheet-up .24s ease-out; }
+    @keyframes sheet-up { from { transform: translateY(100%); } }
+  }
+
   /* a day opens as a sheet over the blurred calendar; tap outside to close */
   .sheet-wrap { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
     padding: max(24px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
@@ -504,17 +562,20 @@
 
   <section aria-labelledby="cal-title" class="cal-section">
     <div class="cal-nav">
-      <div class="cal-titles"><h2 id="cal-title">Month</h2><div class="cal-heb" id="cal-heb" dir="rtl"></div></div>
+      <h2 id="cal-title">Calendar</h2>
       <div class="cal-btns">
-        <button type="button" class="cal-arrow" id="cal-prev" aria-label="Previous month">‹</button>
+        <div class="seg2" role="group" aria-label="View">
+          <button type="button" id="view-month" aria-pressed="true">Month</button>
+          <button type="button" id="view-list" aria-pressed="false">List</button>
+        </div>
         <button type="button" class="cal-today" id="cal-today">Today</button>
-        <button type="button" class="cal-arrow" id="cal-next" aria-label="Next month">›</button>
       </div>
     </div>
-    <div class="cal-full">
+    <div class="cal-full" id="cal-month-view">
       <div class="cweek" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
-      <div class="cgrid" id="cal"></div>
+      <div class="cscroll" id="cal-scroll"></div>
     </div>
+    <div class="agenda" id="cal-list-view" hidden></div>
   </section>
 
   <section aria-labelledby="general-title">
@@ -522,6 +583,8 @@
     <ul class="rems" id="rem-general"></ul>
     <div id="add-general"></div>
   </section>
+
+  <button type="button" class="fab" id="fab" aria-label="Add a reminder">+</button>
 
   <footer>
     <span id="sync-status">Saved on this device</span>
@@ -612,16 +675,16 @@
 
 <div class="sheet-wrap" id="day-modal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet-grip" aria-hidden="true"></div>
     <div class="sheet-head">
       <div><h2 id="sheet-title">Day</h2><div class="sheet-heb" id="sheet-heb" dir="rtl"></div></div>
       <button type="button" class="sheet-x" data-sheet-close aria-label="Close">×</button>
     </div>
-    <ul class="rems" id="sheet-list"></ul>
+    <div class="wstrip" id="week-strip"></div>
     <div id="add-modal"></div>
-    <div class="sheet-nav">
-      <button type="button" class="linkish" data-sheet-step="-1">‹ Previous day</button>
-      <button type="button" class="linkish" data-sheet-step="1">Next day ›</button>
-    </div>
+    <div id="sheet-anytime"></div>
+    <div class="tline" id="sheet-timeline"></div>
+    <ul class="rems" id="sheet-picked"></ul>
   </div>
 </div>
 
@@ -675,7 +738,7 @@
 
   const $ = id => document.getElementById(id);
   // ---- reminders page: today at the top, a full month calendar, then general reminders; a tapped day opens as a sheet
-  let remEditId = null, remOpenId = null, remDelArmed = false, remAdd = null, calMonth = null, sheetDate = null;
+  let remEditId = null, remOpenId = null, remDelArmed = false, remAdd = null, sheetDate = null;
 
   // Hebrew dates: the phone's calendar gives the Hebrew day, month and year; the numbers are written in Hebrew letters here
   const HEB = (() => { try { return new Intl.DateTimeFormat("he-u-ca-hebrew", { day: "numeric", month: "long", year: "numeric" }); } catch { return null; } })();
@@ -724,7 +787,7 @@
     const soon = r.date === keyOf() && r.time && !r.done && toMin(r.time) >= nowMinutes() && toMin(r.time) - nowMinutes() <= 60;
     const here = remWhere === where;
     const open = here && remOpenId === r.id && remEditId !== r.id;
-    return '<li class="rem' + (r.done ? " done" : "") + (open ? " open" : "") + '" data-rid="' + r.id + '">' +
+    return '<li class="rem' + (r.done ? " done" : "") + (open ? " open" : "") + '"' + (r.color ? rc(r) : "") + ' data-rid="' + r.id + '">' +
       '<button class="check" type="button" data-ract2="done" aria-pressed="' + !!r.done + '" aria-label="' + (r.done ? "Mark not done: " : "Mark done: ") + esc(r.text) + '">' + CHECK + '</button>' +
       '<button class="rem-text" type="button" data-ract2="open" aria-expanded="' + open + '">' + esc(r.text) + (when ? '<span class="rem-when' + (soon ? " soon" : "") + '">' + esc(when) + '</span>' : "") + '</button>' +
     '</li>' +
@@ -749,6 +812,8 @@
       '<label class="full">Reminder<input type="text" id="rf-text-' + scope + '" maxlength="140" required value="' + (r ? esc(r.text) : "") + '"></label>' +
       pickHTML("date", "rf-date-" + scope, date, "Date") +
       pickHTML("time", "rf-time-" + scope, r && r.time ? r.time : "", "Time") +
+      '<div class="pick"><span class="pick-label">Color (optional)</span><div class="colors" data-colors="' + scope + '">' +
+        COLORS.map(([k, v]) => '<button type="button" data-color="' + k + '" style="--sw:' + v + '" aria-label="' + k + '" aria-pressed="' + ((r && r.color || "blue") === k) + '"></button>').join("") + '</div></div>' +
       '<div class="actions full"><button class="btn" type="submit">' + (r ? "Save" : "Add") + '</button>' +
       '<button class="btn ghost" type="button" data-rclose="1">Cancel</button></div></form>';
   }
@@ -770,44 +835,116 @@
   }
 
   const shortTime = t => { const [h, m] = t.split(":").map(Number); return ((h % 12) || 12) + (m ? ":" + String(m).padStart(2, "0") : "") + (h >= 12 ? "p" : "a"); };
+  // reminder colors (optional); blue is the default
+  const COLORS = [["blue", "var(--accent)"], ["green", "#2a9663"], ["orange", "#e2714f"], ["purple", "#7a5cc7"], ["red", "#d64545"], ["grey", "#8c93a2"]];
+  const colorOf = r => (COLORS.find(c => c[0] === r.color) || COLORS[0])[1];
+  const rc = r => ' style="--rc:' + colorOf(r) + '"';
+  let calView = "month", calScrolled = false;
+
+  // months scroll one after another: 6 back, 18 ahead
   function renderRemCalendar() {
     const now = new Date(); now.setHours(0, 0, 0, 0);
-    if (!calMonth) calMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const y = calMonth.getFullYear(), m = calMonth.getMonth(), first = new Date(y, m, 1), last = new Date(y, m + 1, 0);
-    $("cal-title").textContent = calMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-    $("cal-heb").textContent = hebRange(first, last);
     const byDate = {};
     for (const r of state.reminders) if (r.date) (byDate[r.date] = byDate[r.date] || []).push(r);
-    const weeks = Math.ceil((first.getDay() + last.getDate()) / 7);
+    $("view-month").setAttribute("aria-pressed", calView === "month"); $("view-list").setAttribute("aria-pressed", calView === "list");
+    $("cal-month-view").hidden = calView !== "month"; $("cal-list-view").hidden = calView !== "list";
+    if (calView === "list") { renderAgenda(byDate); return; }
     let html = "";
-    for (let i = 0; i < weeks * 7; i++) {
-      const date = new Date(y, m, 1 - first.getDay() + i), k = keyOf(date);
-      const items = (byDate[k] || []).sort(byTime);
-      const cls = "cday" + (date.getMonth() !== m ? " out" : "") + (+date === +now ? " today" : "");
-      html += '<button type="button" class="' + cls + '" data-day="' + k + '" aria-label="' + esc(longDate(k) + (items.length ? ", " + items.length + (items.length === 1 ? " reminder" : " reminders") : "")) + '">' +
-        '<span class="ctop"><span class="cnum">' + date.getDate() + '</span><span class="cheb" dir="rtl">' + hebDay(date) + '</span></span>' +
-        items.slice(0, 3).map(r => '<span class="cev' + (r.done ? " done" : "") + '">' + (r.time ? shortTime(r.time) + " " : "") + esc(r.text) + '</span>').join("") +
-        (items.length > 3 ? '<span class="cmore">+' + (items.length - 3) + ' more</span>' : "") + '</button>';
+    for (let mo = -6; mo <= 18; mo++) {
+      const first = new Date(now.getFullYear(), now.getMonth() + mo, 1), last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
+      html += '<div class="cmonth" data-month="' + keyOf(first).slice(0, 7) + '"><div class="cmonth-head"><b>' +
+        first.toLocaleDateString(undefined, { month: "long", year: "numeric" }) + '</b><span dir="rtl">' + hebRange(first, last) + '</span></div><div class="cgrid">';
+      html += '<div class="cday blank" aria-hidden="true"></div>'.repeat(first.getDay());
+      for (let d = 1; d <= last.getDate(); d++) {
+        const date = new Date(first.getFullYear(), first.getMonth(), d), k = keyOf(date);
+        const items = (byDate[k] || []).sort(byTime);
+        html += '<button type="button" class="cday' + (+date === +now ? " today" : "") + '" data-day="' + k + '" aria-label="' + esc(longDate(k) + (items.length ? ", " + items.length + (items.length === 1 ? " reminder" : " reminders") : "")) + '">' +
+          '<span class="ctop"><span class="cnum">' + d + '</span><span class="cheb" dir="rtl">' + hebDay(date) + '</span></span>' +
+          items.slice(0, 3).map(r => '<span class="cev' + (r.done ? " done" : "") + '"' + rc(r) + '>' + (r.time ? shortTime(r.time) + " " : "") + esc(r.text) + '</span>').join("") +
+          (items.length > 3 ? '<span class="cmore">+' + (items.length - 3) + ' more</span>' : "") + '</button>';
+      }
+      const tail = (7 - (first.getDay() + last.getDate()) % 7) % 7;
+      html += '<div class="cday blank" aria-hidden="true"></div>'.repeat(tail) + '</div></div>';
     }
-    $("cal").innerHTML = html;
+    const box = $("cal-scroll"), keep = box.scrollTop;
+    box.innerHTML = html;
+    if (!calScrolled) { scrollToMonth(keyOf(now).slice(0, 7), false); calScrolled = true; } else box.scrollTop = keep;
+  }
+  function scrollToMonth(ym, smooth) {
+    const box = $("cal-scroll"), el = box.querySelector('[data-month="' + ym + '"]');
+    if (el) box.scrollTo({ top: el.offsetTop - box.offsetTop, behavior: smooth ? "smooth" : "auto" });
   }
 
+  // list view: the next two months, day by day, as cards
+  function renderAgenda(byDate) {
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    let html = "";
+    for (let i = 0; i < 62; i++) {
+      const d = new Date(now); d.setDate(now.getDate() + i);
+      const k = keyOf(d), items = (byDate[k] || []).sort(byTime);
+      if (!items.length) continue;
+      html += '<div class="ag-day"><h3>' + (i === 0 ? "Today" : i === 1 ? "Tomorrow" : esc(d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }))) +
+        '<span dir="rtl">' + hebFull(d) + '</span></h3>' +
+        items.map(r => '<button type="button" class="ag-card' + (r.done ? " done" : "") + '"' + rc(r) + ' data-day="' + k + '" data-pick="' + r.id + '"><span class="ag-time">' + (r.time ? fmt(r.time) : "Any time") + '</span><span>' + esc(r.text) + '</span></button>').join("") + '</div>';
+    }
+    $("cal-list-view").innerHTML = html || '<p class="ag-empty">Nothing coming up in the next two months.</p>';
+  }
+
+  // the day sheet: week strip, reminders without a time, then an hour timeline
   function renderSheet() {
     const m = $("day-modal");
     if (!sheetDate) { m.hidden = true; return; }
     m.hidden = false;
+    const day = dateOf(sheetDate), today = keyOf();
     $("sheet-title").textContent = longDate(sheetDate);
-    $("sheet-heb").textContent = hebFull(dateOf(sheetDate));
-    const items = state.reminders.filter(r => r.date === sheetDate).sort(byTime);
-    $("sheet-list").innerHTML = items.length ? items.map(r => remHTML(r, "sheet")).join("") : '<li class="empty muted">Nothing on this day yet.</li>';
+    $("sheet-heb").textContent = hebFull(day);
+    const has = {};
+    for (const r of state.reminders) if (r.date && !r.done) has[r.date] = true;
+    const start = new Date(day); start.setDate(day.getDate() - day.getDay());
+    let strip = "";
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start); d.setDate(start.getDate() + i); const k = keyOf(d);
+      strip += '<button type="button" data-sheet-go="' + k + '" class="' + (k === sheetDate ? "sel" : "") + (k === today ? " today" : "") + '">' +
+        '<span class="wl">' + d.toLocaleDateString(undefined, { weekday: "narrow" }) + '</span><span class="wn">' + d.getDate() + '</span>' +
+        '<span class="wh" dir="rtl">' + hebDay(d) + '</span><span class="wdot' + (has[k] ? "" : " none") + '"></span></button>';
+    }
+    $("week-strip").innerHTML = strip;
     $("add-modal").innerHTML = addArea("modal");
+    const items = state.reminders.filter(r => r.date === sheetDate).sort(byTime);
+    const anytime = items.filter(r => !r.time), timed = items.filter(r => r.time).sort((a, b) => a.time.localeCompare(b.time));
+    $("sheet-anytime").innerHTML = '<p class="any-title">Any time</p><ul class="rems">' +
+      (anytime.length ? anytime.map(r => remHTML(r, "sheet")).join("") : '<li class="empty muted">Nothing without a time.</li>') + '</ul>';
+    // timeline from 6am to 11pm, stretched if a reminder falls outside
+    const mins = timed.map(r => toMin(r.time));
+    const from = Math.min(6, ...mins.map(x => Math.floor(x / 60))), to = Math.max(23, ...mins.map(x => Math.floor(x / 60) + 1));
+    const H = 48;
+    let tl = "";
+    for (let h = from; h < to; h++) tl += '<div class="tl-hour"><span>' + fmt(toHHMM(h * 60)).replace(":00", "") + '</span></div>';
+    // reminders less than half an hour apart sit side by side
+    const groups = [];
+    for (const r of timed) {
+      const g = groups[groups.length - 1];
+      if (g && toMin(r.time) - toMin(g[g.length - 1].time) < 30) g.push(r); else groups.push([r]);
+    }
+    for (const g of groups) g.forEach((r, i) => {
+      const top = (toMin(r.time) - from * 60) / 60 * H, n = g.length;
+      const place = "top:" + top + "px;left:calc(52px + (100% - 56px) * " + i + " / " + n + ");right:auto;width:calc((100% - 56px) / " + n + " - 3px);";
+      tl += '<button type="button" class="tl-block' + (r.done ? " done" : "") + '" style="' + place + '--rc:' + colorOf(r) + '"' +
+        ' data-rid="' + r.id + '" data-ract2="open">' + esc(fmt(r.time) + "  " + r.text) + '</button>';
+    });
+    if (sheetDate === today) { const n = nowMinutes(); if (n >= from * 60 && n <= to * 60) tl += '<div class="tl-now" style="top:' + ((n - from * 60) / 60 * H) + 'px"></div>'; }
+    $("sheet-timeline").innerHTML = tl;
+    // a tapped block shows its Edit / Move / Delete here
+    const picked = timed.find(r => r.id === remOpenId || r.id === remEditId);
+    $("sheet-picked").innerHTML = picked && remWhere === "sheet" ? remHTML(picked, "sheet") : "";
   }
-  function openSheet(k) { sheetDate = k; remAdd = null; remEditId = null; remOpenId = null; remWhere = "sheet"; renderReminders(); }
+  function openSheet(k, pick) { sheetDate = k; remAdd = null; remEditId = null; remOpenId = pick || null; remWhere = "sheet"; renderReminders(); }
   function closeSheet() { sheetDate = null; remAdd = null; remEditId = null; remOpenId = null; remWhere = "page"; document.activeElement?.blur(); renderReminders(); }
 
-  $("cal-prev").onclick = () => { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1); renderRemCalendar(); };
-  $("cal-next").onclick = () => { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1); renderRemCalendar(); };
-  $("cal-today").onclick = () => { calMonth = null; renderRemCalendar(); };
+  $("cal-today").onclick = () => { if (calView === "month") scrollToMonth(keyOf().slice(0, 7), true); else $("cal-list-view").scrollIntoView({ behavior: "smooth" }); };
+  $("view-month").onclick = () => { calView = "month"; calScrolled = false; renderRemCalendar(); };
+  $("view-list").onclick = () => { calView = "list"; renderRemCalendar(); };
+  $("fab").onclick = () => { openSheet(keyOf()); remAdd = "modal"; remWhere = "sheet"; renderSheet(); $("rf-text-modal")?.focus(); };
   document.addEventListener("keydown", e => { if (e.key === "Escape" && sheetDate) closeSheet(); });
 
   const syncPick = input => {
@@ -819,13 +956,15 @@
   function remClick(e, where) {
     if (where === "sheet") {
       if (e.target === $("day-modal") || e.target.closest("[data-sheet-close]")) { closeSheet(); return; }
-      const step = e.target.closest("[data-sheet-step]");
-      if (step) { const d = dateOf(sheetDate); d.setDate(d.getDate() + +step.dataset.sheetStep); openSheet(keyOf(d)); return; }
+      const go = e.target.closest("[data-sheet-go]");
+      if (go) { openSheet(go.dataset.sheetGo); return; }
     }
+    const sw = e.target.closest("[data-color]");
+    if (sw) { sw.parentElement.querySelectorAll("[data-color]").forEach(x => x.setAttribute("aria-pressed", x === sw)); return; }
     const clr = e.target.closest("[data-clear]");
     if (clr) { const input = $(clr.dataset.clear); input.value = ""; syncPick(input); return; }
     const day = e.target.closest("[data-day]");
-    if (day) { openSheet(day.dataset.day); return; }
+    if (day) { openSheet(day.dataset.day, day.dataset.pick); return; }
     const add = e.target.closest("[data-radd]");
     if (add) { remAdd = add.dataset.radd; remEditId = null; remOpenId = null; remWhere = where; renderReminders(); $("rf-text-" + remAdd)?.focus(); return; }
     if (e.target.closest("[data-rclose]")) { remAdd = null; remEditId = null; document.activeElement?.blur(); renderReminders(); return; }
@@ -853,6 +992,8 @@
     const date = v("date"), time = v("time");
     if (date) r.date = date; else delete r.date;
     if (time) r.time = time; else delete r.time;
+    const color = f.querySelector('[data-color][aria-pressed="true"]')?.dataset.color;
+    if (color && color !== "blue") r.color = color; else delete r.color;
     if (scope !== "edit") state.reminders.push(r);
     remAdd = null; remEditId = null; remOpenId = null; document.activeElement?.blur(); commit();
   }
