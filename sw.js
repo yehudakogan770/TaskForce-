@@ -1,6 +1,6 @@
 // Keeps the app working offline: the page is fetched fresh when there's a connection
 // and served from the cache when there isn't; everything else is cached on first use.
-const CACHE = "checklist-v18";
+const CACHE = "checklist-v19";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png",
   "fonts/petrona-latin-400-normal.woff2", "fonts/petrona-latin-600-normal.woff2", "fonts/petrona-latin-700-normal.woff2"];
 

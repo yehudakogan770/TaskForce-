@@ -439,8 +439,14 @@
   .rc-item { display: grid; grid-template-columns: 1fr 56px 96px 32px; gap: 6px; align-items: center; }
   .rc-item-head { font-size: 11.5px; color: var(--c3); }
   .rc-shot { max-width: 100%; max-height: 260px; object-fit: contain; border: 1px solid var(--c4); align-self: flex-start; }
-  .rc-stats { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }  /* the Refunded box only shows when there are refunds */
-  .rc-stat.refund strong { color: var(--warm-text); }
+  .rc-stats { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; }
+  /* under the total, two small lines: what was refunded and what is left */
+  .rc-split { display: flex; flex-direction: column; gap: 1px; margin-top: 4px; padding-top: 5px; border-top: 1px solid var(--c5); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .rc-split div { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: 6px; }
+  .rc-split b { margin-left: auto; }
+  .rc-split span { color: var(--c2); }
+  .rc-split .ref b { color: var(--warm-text); }
+  .rc-split b { font-weight: 600; }
   .rc-stat { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; background: var(--c4); min-width: 0; }
   .rc-stat span { font-size: 11.5px; color: var(--c2); }
   .rc-stat strong { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
@@ -642,8 +648,8 @@
       <div class="rc-stats">
         <div class="rc-stat"><span>Items</span><strong id="rc-items-total">$0.00</strong></div>
         <div class="rc-stat"><span>Tax</span><strong id="rc-tax-total">$0.00</strong></div>
-        <div class="rc-stat"><span>Total</span><strong id="rc-grand-total">$0.00</strong></div>
-        <div class="rc-stat refund" id="rc-refund-box" hidden><span>Refunded</span><strong id="rc-refund-total">$0.00</strong></div>
+        <div class="rc-stat"><span>Total</span><strong id="rc-grand-total">$0.00</strong>
+          <div class="rc-split" id="rc-split" hidden><div class="ref"><span>Refunded</span><b id="rc-refund-total">$0.00</b></div><div><span>Due</span><b id="rc-due-total">$0.00</b></div></div></div>
       </div>
       <p class="rc-stats-note" id="rc-stats-note">All saved receipts.</p>
     </section>
@@ -1665,10 +1671,13 @@
     const refunds = list.reduce((a, r) => a + (r.refund ? r.refund.amount : 0), 0);
     $("rc-items-total").textContent = money(kept.reduce((a, r) => a + itemsOf(r), 0));
     $("rc-tax-total").textContent = money(kept.reduce((a, r) => a + (r.tax || 0), 0));
-    $("rc-grand-total").textContent = money(list.reduce((a, r) => a + (r.total || 0), 0) - refunds);
-    $("rc-refund-box").hidden = !refunds;
+    const gross = list.reduce((a, r) => a + (r.total || 0), 0);
+    // with refunds the top number is everything ordered, and the two lines under it split it into refunded and what's left
+    $("rc-grand-total").textContent = money(gross);
+    $("rc-due-total").textContent = money(gross - refunds);
+    $("rc-split").hidden = !refunds;
     $("rc-refund-total").textContent = money(refunds);
-    $("rc-stats-note").textContent = refunds ? "All saved receipts. Refunds are taken off the total." : "All saved receipts.";
+    $("rc-stats-note").textContent = "All saved receipts.";
 
     // still returnable, the one whose window closes first at the top
     const soon = list.filter(r => !r.returned && !r.refund).filter(r => r.returnBy && dayDiff(r.returnBy) >= 0).sort((a, b) => a.returnBy < b.returnBy ? -1 : 1);
