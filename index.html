@@ -31,13 +31,14 @@
     --accent: #3d63d6;       /* buttons and highlights */
     --on-accent: #ffffff;
     --ring1: #3d63d6; --ring2: #e2714f; --ring3: #2a9663;
+    --warm: #e2714f; --on-warm: #ffffff;  /* the logo's coral: today, now, and things that need attention */
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) { --c1: #f1f3f6; --c2: #c4c9d3; --c3: #7b8394; --c4: #272c35; --c5: #0e1116;
-      --accent: #7d95e6; --on-accent: #0e1116; --ring1: #7d95e6; --ring2: #ec9379; --ring3: #4fbd8a; color-scheme: dark; }
+      --accent: #7d95e6; --on-accent: #0e1116; --ring1: #7d95e6; --ring2: #ec9379; --ring3: #4fbd8a; --warm: #ec9379; --on-warm: #0e1116; color-scheme: dark; }
   }
   :root[data-theme="dark"] { --c1: #f1f3f6; --c2: #c4c9d3; --c3: #7b8394; --c4: #272c35; --c5: #0e1116;
-    --accent: #7d95e6; --on-accent: #0e1116; --ring1: #7d95e6; --ring2: #ec9379; --ring3: #4fbd8a; color-scheme: dark; }
+    --accent: #7d95e6; --on-accent: #0e1116; --ring1: #7d95e6; --ring2: #ec9379; --ring3: #4fbd8a; --warm: #ec9379; --on-warm: #0e1116; color-scheme: dark; }
 
 
   html { -webkit-text-size-adjust: 100%; }
@@ -191,7 +192,7 @@
   .cal-arrow { font: inherit; font-size: 22px; line-height: 1; width: 40px; height: 36px; border: 1px solid var(--c4); background: var(--c5); color: var(--c1); cursor: pointer; }
   button.day { font: inherit; font-size: 12.5px; background: var(--c5); color: var(--c1); cursor: pointer; position: relative; flex-direction: column; justify-content: space-between; }
   button.day.past { color: var(--c3); }
-  button.day.is-today { border: 2px solid var(--accent); }
+  button.day.is-today { border: 2px solid var(--warm); }
   button.day.selected { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
   .day .dots { display: flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: var(--accent); }
   .day .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
@@ -217,7 +218,7 @@
   .cday:active { background: var(--c4); }
   .ctop { display: flex; justify-content: space-between; align-items: center; gap: 2px; }
   .cnum { width: 22px; height: 22px; display: grid; place-items: center; font-size: 12.5px; font-weight: 600; flex: none; }
-  .cday.today .cnum { background: var(--accent); color: var(--on-accent); border-radius: 50%; }
+  .cday.today .cnum { background: var(--warm); color: var(--on-warm); border-radius: 50%; }
   .cheb { font-size: 10px; color: var(--c3); white-space: nowrap; }
   .cday.out .cnum, .cday.out .cheb, .cday.out .cev { opacity: .4; }
   .cev { display: block; font-size: 10px; line-height: 1.3; padding: 1px 3px; background: var(--c4); border-left: 2px solid var(--accent);
@@ -262,8 +263,9 @@
   .wstrip .wl { font-size: 11px; color: var(--c3); }
   .wstrip .wn { width: 30px; height: 30px; display: grid; place-items: center; font-size: 14px; font-weight: 600; border-radius: 50%; }
   .wstrip .wh { font-size: 10px; color: var(--c3); }
-  .wstrip button.today .wn { color: var(--accent); }
+  .wstrip button.today .wn { color: var(--warm); }
   .wstrip button.sel .wn { background: var(--accent); color: var(--on-accent); }
+  .wstrip button.today.sel .wn { background: var(--warm); color: var(--on-warm); }
   .wstrip .wdot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
   .wstrip .wdot.none { background: transparent; }
   .any-title { font-size: 12.5px; color: var(--c2); margin: 0 0 4px; }
@@ -274,8 +276,8 @@
     background: color-mix(in srgb, var(--rc, var(--accent)) 18%, var(--c5)); color: var(--c1); font: inherit; font-size: 12.5px; text-align: left;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; z-index: 1; }
   .tl-block.done { color: var(--c3); text-decoration: line-through; }
-  .tl-now { position: absolute; left: 46px; right: 0; height: 2px; background: #e5484d; z-index: 2; }
-  .tl-now::before { content: ""; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: #e5484d; }
+  .tl-now { position: absolute; left: 46px; right: 0; height: 2px; background: var(--warm); z-index: 2; }
+  .tl-now::before { content: ""; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--warm); }
   @media (max-width: 700px) {
     .sheet-wrap { align-items: flex-end; padding: max(40px, env(safe-area-inset-top, 0px)) 0 0; }
     .sheet { max-width: none; max-height: 100%; border-left: 0; border-right: 0; border-bottom: 0;
@@ -391,7 +393,7 @@
   .inv-preview { max-width: 100%; border: 1px solid var(--c4); }
   .debt-amt { display: block; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
   .debt-due { display: block; font-size: 11.5px; font-weight: 600; text-align: right; margin-top: 4px; white-space: nowrap; }
-  .debt-due.overdue { background: var(--accent); color: var(--on-accent); padding: 1px 6px; }
+  .debt-due.overdue { background: var(--warm); color: var(--on-warm); padding: 1px 6px; }
   .debt-due.soon { color: var(--c1); }
   .debt-due.later { color: var(--c3); font-weight: 400; }
   .debt.paid .debt-who, .debt.paid .debt-amt { color: var(--c3); text-decoration: line-through; }
@@ -446,7 +448,7 @@
     background: none; border: 0; border-bottom: 1px solid var(--c4); text-align: left; cursor: pointer; }
   .soon-row:hover { background: var(--c4); }
   .soon-days { font-size: 11.5px; font-weight: 600; padding: 2px 6px; text-align: center; border: 1px solid var(--c1); }
-  .soon-days.urgent { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .soon-days.urgent { background: var(--warm); border-color: var(--warm); color: var(--on-warm); }
   .soon-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .soon-sub { display: block; font-size: 12.5px; color: var(--c3); }
   .soon-amt { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
