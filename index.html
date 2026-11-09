@@ -249,6 +249,10 @@
   .ag-time { flex: none; font-size: 13px; font-weight: 600; min-width: 58px; }
   .ag-empty { color: var(--c3); font-size: 13.5px; }
   .rem { border-left: 3px solid transparent; }
+  /* calendar entries made from Money and Receipts: a small orange square instead of a checkbox */
+  .rem.auto .auto-mark { width: 12px; height: 12px; background: var(--warm); justify-self: center; }
+  li.flash { animation: flash 1.6s ease-out; }
+  @keyframes flash { 0%, 40% { background: color-mix(in srgb, var(--warm) 22%, transparent); } 100% { background: transparent; } }
   .rem[style] { border-left-color: var(--rc); padding-left: 6px; }
   .colors { display: flex; gap: 8px; flex-wrap: wrap; }
   .colors button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--c5); outline: 1px solid var(--c4); background: var(--sw); cursor: pointer; }
@@ -844,11 +848,36 @@
     return remAdd === scope ? remFormHTML(scope) : '<button class="btn ghost add-rem" type="button" data-radd="' + scope + '">+ Add reminder</button>';
   }
 
+  // money due dates and last days to return show up on the calendar by themselves (no time, unless the reminder is your own).
+  // They aren't reminders: they change when the debt or receipt changes, and tapping one opens it in Money or Receipts.
+  function autoEntries() {
+    const out = [];
+    for (const d of state.debts || []) {
+      if (d.paid || !d.due || d.sample) continue;
+      const what = d.what ? " (" + d.what + ")" : "";
+      out.push({ id: "debt:" + d.id, auto: "owe", ref: d.id, date: d.due, color: "orange",
+        text: d.dir === "owed" ? d.who + " pays you back " + money(d.amount) + what : "Pay " + d.who + " " + money(d.amount) + what });
+    }
+    for (const r of state.receipts || []) {
+      if (r.returned || r.refund || !r.returnBy || r.sample) continue;
+      const name = ((r.items || []).find(it => it.name) || {}).name || r.store || "order";
+      out.push({ id: "rc:" + r.id, auto: "receipts", ref: r.id, date: r.returnBy, color: "orange", text: "Last day to return " + name });
+    }
+    return out;
+  }
+  const withAuto = list => [...list, ...autoEntries()];
+  function autoHTML(e) {
+    return '<li class="rem auto" style="--rc:var(--warm)"><span class="auto-mark" aria-hidden="true"></span>' +
+      '<button class="rem-text" type="button" data-auto="' + e.auto + '" data-ref="' + e.ref + '">' + esc(e.text) +
+      '<span class="rem-when">' + (e.auto === "owe" ? "From Money" : "From Receipts") + ' · tap to open</span></button></li>';
+  }
+  const anyHTML = (r, where) => r.auto ? autoHTML(r) : remHTML(r, where);
+
   function renderReminders() {
     const today = keyOf(), list = state.reminders;
     $("sample-notice").hidden = !list.some(r => r.sample);
-    const todays = list.filter(r => r.date === today).sort(byTime);
-    $("rem-today").innerHTML = todays.length ? todays.map(r => remHTML(r, "page")).join("") : '<li class="empty muted">Nothing for today.</li>';
+    const todays = withAuto(list).filter(r => r.date === today).sort(byTime);
+    $("rem-today").innerHTML = todays.length ? todays.map(r => anyHTML(r, "page")).join("") : '<li class="empty muted">Nothing for today.</li>';
     $("add-today").innerHTML = addArea("today");
     const general = list.filter(r => !r.date).sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0));
     $("rem-general").innerHTML = general.length ? general.map(r => remHTML(r, "page")).join("") : '<li class="empty muted">No general reminders.</li>';
@@ -868,7 +897,7 @@
   function renderRemCalendar() {
     const now = new Date(); now.setHours(0, 0, 0, 0);
     const byDate = {};
-    for (const r of state.reminders) if (r.date) (byDate[r.date] = byDate[r.date] || []).push(r);
+    for (const r of withAuto(state.reminders)) if (r.date) (byDate[r.date] = byDate[r.date] || []).push(r);
     $("view-month").setAttribute("aria-pressed", calView === "month"); $("view-list").setAttribute("aria-pressed", calView === "list");
     $("cal-month-view").hidden = calView !== "month"; $("cal-list-view").hidden = calView !== "list";
     if (calView === "list") { renderAgenda(byDate); return; }
@@ -908,7 +937,7 @@
       if (!items.length) continue;
       html += '<div class="ag-day"><h3>' + (i === 0 ? "Today" : i === 1 ? "Tomorrow" : esc(d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }))) +
         '<span dir="rtl">' + hebFull(d) + '</span></h3>' +
-        items.map(r => '<button type="button" class="ag-card' + (r.done ? " done" : "") + '"' + rc(r) + ' data-day="' + k + '" data-pick="' + r.id + '"><span class="ag-time">' + (r.time ? fmt(r.time) : "Any time") + '</span><span>' + esc(r.text) + '</span></button>').join("") + '</div>';
+        items.map(r => '<button type="button" class="ag-card' + (r.done ? " done" : "") + '"' + rc(r) + (r.auto ? ' data-auto="' + r.auto + '" data-ref="' + r.ref + '"' : ' data-day="' + k + '" data-pick="' + r.id + '"') + '><span class="ag-time">' + (r.time ? fmt(r.time) : "Any time") + '</span><span>' + esc(r.text) + '</span></button>').join("") + '</div>';
     }
     $("cal-list-view").innerHTML = html || '<p class="ag-empty">Nothing coming up in the next two months.</p>';
   }
@@ -922,7 +951,7 @@
     $("sheet-title").textContent = longDate(sheetDate);
     $("sheet-heb").textContent = hebFull(day);
     const has = {};
-    for (const r of state.reminders) if (r.date && !r.done) has[r.date] = true;
+    for (const r of withAuto(state.reminders)) if (r.date && !r.done) has[r.date] = true;
     const start = new Date(day); start.setDate(day.getDate() - day.getDay());
     let strip = "";
     for (let i = 0; i < 7; i++) {
@@ -933,10 +962,10 @@
     }
     $("week-strip").innerHTML = strip;
     $("add-modal").innerHTML = addArea("modal");
-    const items = state.reminders.filter(r => r.date === sheetDate).sort(byTime);
+    const items = withAuto(state.reminders).filter(r => r.date === sheetDate).sort(byTime);
     const anytime = items.filter(r => !r.time), timed = items.filter(r => r.time).sort((a, b) => a.time.localeCompare(b.time));
     $("sheet-anytime").innerHTML = '<p class="any-title">Any time</p><ul class="rems">' +
-      (anytime.length ? anytime.map(r => remHTML(r, "sheet")).join("") : '<li class="empty muted">Nothing without a time.</li>') + '</ul>';
+      (anytime.length ? anytime.map(r => anyHTML(r, "sheet")).join("") : '<li class="empty muted">Nothing without a time.</li>') + '</ul>';
     // timeline from 6am to 11pm, stretched if a reminder falls outside
     const mins = timed.map(r => toMin(r.time));
     const from = Math.min(6, ...mins.map(x => Math.floor(x / 60))), to = Math.max(23, ...mins.map(x => Math.floor(x / 60) + 1));
@@ -976,6 +1005,18 @@
     input.closest(".pick-box").classList.toggle("empty", !v);
     input.closest(".pick").querySelector(".pick-clear").hidden = !v;
   };
+  // go to the debt or receipt behind a calendar entry
+  function openAuto(page, id) {
+    if (sheetDate) closeSheet();
+    if (page === "receipts") { rcOpenId = id; renderReceipts(); }
+    showPage(page);
+    setTimeout(() => {
+      const li = document.querySelector((page === "receipts" ? "#receipts" : "#page-owe") + ' li[data-id="' + id + '"]');
+      if (!li) return;
+      const pg = li.closest(".page"); pg.scrollTo({ top: pg.scrollTop + li.getBoundingClientRect().top - pg.getBoundingClientRect().top - 80, behavior: "smooth" });
+      li.classList.add("flash"); setTimeout(() => li.classList.remove("flash"), 1600);
+    }, 350);
+  }
   function remClick(e, where) {
     if (where === "sheet") {
       if (e.target === $("day-modal") || e.target.closest("[data-sheet-close]")) { closeSheet(); return; }
@@ -986,6 +1027,8 @@
     if (sw) { sw.parentElement.querySelectorAll("[data-color]").forEach(x => x.setAttribute("aria-pressed", x === sw)); return; }
     const clr = e.target.closest("[data-clear]");
     if (clr) { const input = $(clr.dataset.clear); input.value = ""; syncPick(input); return; }
+    const au = e.target.closest("[data-auto]");
+    if (au) { openAuto(au.dataset.auto, au.dataset.ref); return; }
     const day = e.target.closest("[data-day]");
     if (day) { openSheet(day.dataset.day, day.dataset.pick); return; }
     const add = e.target.closest("[data-radd]");
