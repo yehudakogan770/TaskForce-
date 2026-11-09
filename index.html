@@ -393,6 +393,11 @@
   .inv-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--c2); }
   .inv-form label.tick { flex-direction: row; align-items: center; gap: 8px; font-size: 13.5px; color: var(--c1); }
   .inv-form label.tick input { width: 18px; height: 18px; accent-color: var(--accent); }
+  /* yes/no boxes in forms: the app's small round checkbox */
+  label.tick { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; font-size: 13.5px; color: var(--c1); margin: 4px 0; cursor: pointer; }
+  label.tick input[type="checkbox"] { -webkit-appearance: none; appearance: none; flex: none; width: 20px !important; height: 20px !important; min-width: 0; margin: 0; padding: 0;
+    border: 1.5px solid var(--c3); border-radius: 50%; background: var(--c5); cursor: pointer; }
+  label.tick input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 0 3px var(--c5); }
   .inv-form textarea { font: inherit; font-size: 16px; line-height: 1.4; color: var(--c1); background: var(--c5); border: 1px solid var(--c3); padding: 10px 12px; min-height: 84px; resize: vertical; }
   .inv-preview { max-width: 100%; border: 1px solid var(--c4); }
   .debt-amt { display: block; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
@@ -1721,7 +1726,7 @@
       const sp = splitReceipt(r);
       if (r.refund) { refunds += r.refund.amount; items += sp.itemsLeft; tax += sp.taxLeft; total += sp.itemsLeft + sp.shipLeft + sp.taxLeft; }
       else if (r.returned) continue;
-      else { const t = sp.items + sp.ship + sp.tax; items += sp.items; tax += sp.tax; total += t; due += t; open++; count += (r.items || []).reduce((a, it) => a + (num(it.qty) || 1), 0) || 1; }
+      else { const t = sp.items + sp.ship + sp.tax; items += sp.items; tax += sp.tax; total += t; due += sp.items + sp.ship + (r.taxBack ? sp.tax : 0); open++; count += (r.items || []).reduce((a, it) => a + (num(it.qty) || 1), 0) || 1; }
     }
     $("rc-count").textContent = count + (count === 1 ? " item" : " items");
     $("rc-tax-total").textContent = money(tax);
@@ -1729,7 +1734,7 @@
     $("rc-due-total").textContent = money(due);
     $("rc-ref-line").classList.toggle("some", refunds > 0);
     $("rc-refund-total").textContent = money(refunds);
-    $("rc-stats-note").textContent = list.some(r => r.returned || r.refund) ? "Returned and refunded orders are taken out. Tax you didn't get back stays in." : "All saved receipts.";
+    $("rc-stats-note").textContent = "Due leaves out tax unless a receipt says the tax gets refunded." + (list.some(r => r.returned || r.refund) ? " Returned and refunded orders are taken out." : "");
 
     // still returnable, the one whose window closes first at the top
     const soon = list.filter(r => !r.returned && !r.refund).filter(r => r.returnBy && dayDiff(r.returnBy) >= 0).sort((a, b) => a.returnBy < b.returnBy ? -1 : 1);
@@ -1783,7 +1788,7 @@
       '</td><td>' + (num(it.price) == null ? "" : money(lineTotal(it))) + '</td></tr>').join("");
     const sum = (label, v, cls) => v == null ? "" : '<tr class="' + (cls || "sum") + '"><td>' + label + '</td><td>' + money(v) + '</td></tr>';
     const facts = [["Order date", r.orderDate && shortDate(r.orderDate)], ["Return by", r.returnBy ? shortDate(r.returnBy) : "Not on receipt"],
-      ["Order #", r.orderNumber], ["Paid with", r.payment], ["Returned", r.returned && shortDate(r.returned)],
+      ["Order #", r.orderNumber], ["Paid with", r.payment], ["Tax back", r.tax ? (r.taxBack ? "Yes, the tax gets refunded" : "No") : ""], ["Returned", r.returned && shortDate(r.returned)],
       ["Refunded", r.refund && money(r.refund.amount) + (r.tax ? (splitReceipt(r).taxLeft < 0.005 ? " with tax" : " without tax") : "") + " on " + shortDate(r.refund.date)]].filter(f => f[1]);
     return '<div class="rc-detail">' +
       '<dl class="rc-facts">' + facts.map(f => '<dt>' + f[0] + '</dt><dd>' + esc(f[1]) + '</dd>').join("") + '</dl>' +
@@ -1796,9 +1801,9 @@
         '<button class="btn ghost" type="button" data-ract="delete">' + (rcDeleteArmed ? "Tap again to delete" : "Delete") + '</button>' +
       '</div>' +
       (refundOpenId === r.id ? '<div class="rc-grid">' +
-        '<label class="rc-label">Amount refunded<input type="number" id="rf-amount" min="0.01" step="0.01" inputmode="decimal" value="' + refundDefault(r, false) + '"></label>' +
+        '<label class="rc-label">Amount refunded<input type="number" id="rf-amount" min="0.01" step="0.01" inputmode="decimal" value="' + refundDefault(r, !!r.taxBack) + '"></label>' +
         '<label class="rc-label">Date refunded<input type="date" id="rf-date" value="' + keyOf() + '"></label>' +
-        (r.tax ? '<label class="tick" style="grid-column:1/-1"><input type="checkbox" id="rf-tax"> The tax (' + money(r.tax) + ') was refunded too</label>' : "") +
+        (r.tax ? '<label class="tick" style="grid-column:1/-1"><input type="checkbox" id="rf-tax"' + (r.taxBack ? " checked" : "") + '> The tax (' + money(r.tax) + ') was refunded too</label>' : "") +
         '<div class="actions" style="grid-column:1/-1"><button class="btn" type="button" data-ract="refund-save">Save refund</button>' +
         '<button class="btn ghost" type="button" data-ract="refund-cancel">Cancel</button></div></div>' : "") +
     '</div>';
@@ -1887,6 +1892,7 @@
         '<label>Tax<input type="number" id="rc-tax" step="0.01" inputmode="decimal" value="' + v(d.tax) + '"></label>' +
         '<label>Total<input type="number" id="rc-total" step="0.01" inputmode="decimal" value="' + v(d.total) + '"></label>' +
       '</div>' +
+      '<label class="tick"><input type="checkbox" id="rc-taxback"' + (d.taxBack ? " checked" : "") + '> The tax gets refunded too</label>' +
       '<div class="actions"><button class="btn" type="submit">Save receipt</button>' +
         '<button class="btn ghost" type="button" data-fact="cancel">Cancel</button></div>' +
     '</form>';
@@ -1901,6 +1907,7 @@
       name: row.querySelector('[data-f="name"]').value.trim(), qty: num(row.querySelector('[data-f="qty"]').value) || 1, price: num(row.querySelector('[data-f="price"]').value),
     }));
     ["subtotal", "shipping", "tax", "total"].forEach(k => { d[k] = num($("rc-" + k).value); });
+    d.taxBack = $("rc-taxback").checked;  // off unless ticked: most returns give back the items without the tax
   }
   $("rc-form-wrap").addEventListener("click", e => {
     const b = e.target.closest("[data-fact]"); if (!b) return;
