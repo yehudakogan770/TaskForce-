@@ -1712,14 +1712,14 @@
 
   function renderReceipts() {
     const list = [...(state.receipts || [])].sort((a, b) => (b.orderDate || "") < (a.orderDate || "") ? -1 : 1);
-    // the top numbers are what you paid and kept. A return moves the items to Due (money owed back to you);
-    // a refund moves it to Refunded. Tax stays unless the refund included it, since that's money you didn't get back.
+    // the top numbers are the open orders: what you spent that's still to go back. Due is that same money, owed back to you.
+    // A returned order comes out of everything. A refund goes into Refunded; tax the refund didn't cover stays in Tax and Total.
     let items = 0, tax = 0, total = 0, refunds = 0, due = 0, open = 0;
     for (const r of list) {
       const sp = splitReceipt(r);
       if (r.refund) { refunds += r.refund.amount; items += sp.itemsLeft; tax += sp.taxLeft; total += sp.itemsLeft + sp.shipLeft + sp.taxLeft; }
-      else if (r.returned) { due += sp.items; tax += sp.tax; total += sp.ship + sp.tax; }
-      else { items += sp.items; tax += sp.tax; total += sp.items + sp.ship + sp.tax; open++; }
+      else if (r.returned) continue;
+      else { const t = sp.items + sp.ship + sp.tax; items += sp.items; tax += sp.tax; total += t; due += t; open++; }
     }
     $("rc-items-total").textContent = money(items);
     $("rc-tax-total").textContent = money(tax);
@@ -1728,7 +1728,7 @@
     $("rc-ref-line").classList.toggle("some", refunds > 0);
     $("rc-count").textContent = open;
     $("rc-refund-total").textContent = money(refunds);
-    $("rc-stats-note").textContent = list.some(r => r.returned || r.refund) ? "Returned and refunded items are taken out. Tax you didn't get back stays in." : "All saved receipts.";
+    $("rc-stats-note").textContent = list.some(r => r.returned || r.refund) ? "Returned and refunded orders are taken out. Tax you didn't get back stays in." : "All saved receipts.";
 
     // still returnable, the one whose window closes first at the top
     const soon = list.filter(r => !r.returned && !r.refund).filter(r => r.returnBy && dayDiff(r.returnBy) >= 0).sort((a, b) => a.returnBy < b.returnBy ? -1 : 1);
