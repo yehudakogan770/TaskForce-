@@ -650,10 +650,10 @@
 
     <section aria-label="Totals">
       <div class="rc-stats">
-        <div class="rc-stat"><span>Items</span><strong id="rc-items-total">$0.00</strong>
-          <div class="rc-split"><div><span>Tax</span><b id="rc-tax-total">$0.00</b></div><div><span>Orders</span><b id="rc-count">0</b></div></div></div>
         <div class="rc-stat"><span>Total</span><strong id="rc-grand-total">$0.00</strong>
-          <div class="rc-split"><div class="ref" id="rc-ref-line"><span>Refunded</span><b id="rc-refund-total">$0.00</b></div><div><span>Due</span><b id="rc-due-total">$0.00</b></div></div></div>
+          <div class="rc-split"><div><span>Tax</span><b id="rc-tax-total">$0.00</b></div><div><span>Items</span><b id="rc-items-total">$0.00</b></div></div></div>
+        <div class="rc-stat"><span>Due</span><strong id="rc-due-total">$0.00</strong>
+          <div class="rc-split"><div class="ref" id="rc-ref-line"><span>Refunded</span><b id="rc-refund-total">$0.00</b></div></div></div>
       </div>
       <p class="rc-stats-note" id="rc-stats-note">All saved receipts.</p>
     </section>
@@ -1726,7 +1726,6 @@
     $("rc-grand-total").textContent = money(total);
     $("rc-due-total").textContent = money(due);
     $("rc-ref-line").classList.toggle("some", refunds > 0);
-    $("rc-count").textContent = open;
     $("rc-refund-total").textContent = money(refunds);
     $("rc-stats-note").textContent = list.some(r => r.returned || r.refund) ? "Returned and refunded orders are taken out. Tax you didn't get back stays in." : "All saved receipts.";
 
