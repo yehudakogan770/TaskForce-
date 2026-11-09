@@ -31,14 +31,14 @@
     --accent: #3d63d6;       /* buttons and highlights */
     --on-accent: #ffffff;
     --ring1: #3d63d6; --ring2: #e2714f; --ring3: #2a9663;
-    --warm: #e2714f; --on-warm: #ffffff;  /* the logo's coral: today, now, and things that need attention */
+    --warm: #e2714f; --on-warm: #ffffff; --warm-text: #c4552f;  /* a shade deeper so small orange words stay readable */  /* the logo's coral: today, now, and things that need attention */
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) { --c1: #f1f3f6; --c2: #c4c9d3; --c3: #7b8394; --c4: #272c35; --c5: #0e1116;
-      --accent: #7d95e6; --on-accent: #0e1116; --ring1: #7d95e6; --ring2: #ec9379; --ring3: #4fbd8a; --warm: #ec9379; --on-warm: #0e1116; color-scheme: dark; }
+      --accent: #7d95e6; --on-accent: #0e1116; --ring1: #7d95e6; --ring2: #ec9379; --ring3: #4fbd8a; --warm: #ec9379; --on-warm: #0e1116; --warm-text: #ec9379; color-scheme: dark; }
   }
   :root[data-theme="dark"] { --c1: #f1f3f6; --c2: #c4c9d3; --c3: #7b8394; --c4: #272c35; --c5: #0e1116;
-    --accent: #7d95e6; --on-accent: #0e1116; --ring1: #7d95e6; --ring2: #ec9379; --ring3: #4fbd8a; --warm: #ec9379; --on-warm: #0e1116; color-scheme: dark; }
+    --accent: #7d95e6; --on-accent: #0e1116; --ring1: #7d95e6; --ring2: #ec9379; --ring3: #4fbd8a; --warm: #ec9379; --on-warm: #0e1116; --warm-text: #ec9379; color-scheme: dark; }
 
 
   html { -webkit-text-size-adjust: 100%; }
@@ -396,6 +396,7 @@
   .debt-due.overdue { background: var(--warm); color: var(--on-warm); padding: 1px 6px; }
   .debt-due.soon { color: var(--c1); }
   .debt-due.later { color: var(--c3); font-weight: 400; }
+  .debt-due.refunded { color: var(--warm-text); }
   .debt.paid .debt-who, .debt.paid .debt-amt { color: var(--c3); text-decoration: line-through; }
   .debt-edit { grid-column: 1 / -1; padding-top: 6px; }
   .people { display: flex; flex-direction: column; }
@@ -1643,7 +1644,7 @@
   }
 
   function returnLabel(r) {
-    if (r.refund) return { cls: "later", text: "Refunded " + money(r.refund.amount) };
+    if (r.refund) return { cls: "refunded", text: "Refunded " + money(r.refund.amount) };
     if (r.returned) return { cls: "later", text: "Returned " + shortDate(r.returned) };
     if (!r.returnBy) return null;
     const n = dayDiff(r.returnBy);
