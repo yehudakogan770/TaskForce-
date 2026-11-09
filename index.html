@@ -230,7 +230,14 @@
   .seg2 { display: inline-flex; border: 1px solid var(--c4); }
   .seg2 button { font: inherit; font-size: 13.5px; font-weight: 600; height: 34px; padding: 0 12px; border: 0; background: var(--c5); color: var(--c2); cursor: pointer; }
   .seg2 button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
-  .cscroll { height: min(70vh, 640px); overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y proximity; border-top: 1px solid var(--c4); }
+  /* one month at a time; the arrows change month (no swiping, so it never fights the page swipe or scrolling) */
+  .cscroll { border-top: 1px solid var(--c4); }
+  .cnav { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 8px; padding: 6px max(16px, env(safe-area-inset-left, 0px)) 8px; }
+  .cnav button { font: inherit; font-size: 26px; line-height: 1; width: 44px; height: 40px; border: 1px solid var(--c4); background: var(--c5); color: var(--c1); cursor: pointer; padding: 0 0 3px; }
+  .cnav button:active { background: var(--c4); }
+  .cnav-title { display: flex; flex-direction: column; align-items: center; gap: 1px; text-align: center; }
+  .cnav-title b { font-size: 16px; }
+  .cnav-title span { font-size: 12.5px; color: var(--c2); unicode-bidi: plaintext; }
   .cmonth { scroll-snap-align: start; }
   .cmonth-head { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
     padding: 10px max(16px, env(safe-area-inset-left, 0px)) 6px; background: var(--c5); border-bottom: 1px solid var(--c4); }
@@ -597,6 +604,11 @@
       </div>
     </div>
     <div class="cal-full" id="cal-month-view">
+      <div class="cnav">
+        <button type="button" id="cal-prev" aria-label="Previous month">‹</button>
+        <div class="cnav-title"><b id="cal-month-name"></b><span id="cal-heb" dir="rtl"></span></div>
+        <button type="button" id="cal-next" aria-label="Next month">›</button>
+      </div>
       <div class="cweek" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
       <div class="cscroll" id="cal-scroll"></div>
     </div>
@@ -898,7 +910,7 @@
   const COLORS = [["blue", "var(--accent)"], ["green", "#2a9663"], ["orange", "#e2714f"], ["purple", "#7a5cc7"], ["red", "#d64545"], ["grey", "#8c93a2"]];
   const colorOf = r => (COLORS.find(c => c[0] === r.color) || COLORS[0])[1];
   const rc = r => ' style="--rc:' + colorOf(r) + '"';
-  let calView = "month", calScrolled = false;
+  let calView = "month", calOffset = 0;  // months from this one
 
   // months scroll one after another: 6 back, 18 ahead
   function renderRemCalendar() {
@@ -908,30 +920,22 @@
     $("view-month").setAttribute("aria-pressed", calView === "month"); $("view-list").setAttribute("aria-pressed", calView === "list");
     $("cal-month-view").hidden = calView !== "month"; $("cal-list-view").hidden = calView !== "list";
     if (calView === "list") { renderAgenda(byDate); return; }
-    let html = "";
-    for (let mo = -6; mo <= 18; mo++) {
-      const first = new Date(now.getFullYear(), now.getMonth() + mo, 1), last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
-      html += '<div class="cmonth" data-month="' + keyOf(first).slice(0, 7) + '"><div class="cmonth-head"><b>' +
-        first.toLocaleDateString(undefined, { month: "long", year: "numeric" }) + '</b><span dir="rtl">' + hebRange(first, last) + '</span></div><div class="cgrid">';
-      html += '<div class="cday blank" aria-hidden="true"></div>'.repeat(first.getDay());
-      for (let d = 1; d <= last.getDate(); d++) {
-        const date = new Date(first.getFullYear(), first.getMonth(), d), k = keyOf(date);
-        const items = (byDate[k] || []).sort(byTime);
-        html += '<button type="button" class="cday' + (+date === +now ? " today" : "") + '" data-day="' + k + '" aria-label="' + esc(longDate(k) + (items.length ? ", " + items.length + (items.length === 1 ? " reminder" : " reminders") : "")) + '">' +
-          '<span class="ctop"><span class="cnum">' + d + '</span><span class="cheb" dir="rtl">' + hebDay(date) + '</span></span>' +
-          items.slice(0, 3).map(r => '<span class="cev' + (r.done ? " done" : "") + '"' + rc(r) + '>' + (r.time ? shortTime(r.time) + " " : "") + esc(r.text) + '</span>').join("") +
-          (items.length > 3 ? '<span class="cmore">+' + (items.length - 3) + ' more</span>' : "") + '</button>';
-      }
-      const tail = (7 - (first.getDay() + last.getDate()) % 7) % 7;
-      html += '<div class="cday blank" aria-hidden="true"></div>'.repeat(tail) + '</div></div>';
+    const first = new Date(now.getFullYear(), now.getMonth() + calOffset, 1), last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
+    $("cal-month-name").textContent = first.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    $("cal-heb").textContent = hebRange(first, last);
+    let html = '<div class="cmonth"><div class="cgrid">';
+    html += '<div class="cday blank" aria-hidden="true"></div>'.repeat(first.getDay());
+    for (let d = 1; d <= last.getDate(); d++) {
+      const date = new Date(first.getFullYear(), first.getMonth(), d), k = keyOf(date);
+      const items = (byDate[k] || []).sort(byTime);
+      html += '<button type="button" class="cday' + (+date === +now ? " today" : "") + '" data-day="' + k + '" aria-label="' + esc(longDate(k) + (items.length ? ", " + items.length + (items.length === 1 ? " reminder" : " reminders") : "")) + '">' +
+        '<span class="ctop"><span class="cnum">' + d + '</span><span class="cheb" dir="rtl">' + hebDay(date) + '</span></span>' +
+        items.slice(0, 3).map(r => '<span class="cev' + (r.done ? " done" : "") + '"' + rc(r) + '>' + (r.time ? shortTime(r.time) + " " : "") + esc(r.text) + '</span>').join("") +
+        (items.length > 3 ? '<span class="cmore">+' + (items.length - 3) + ' more</span>' : "") + '</button>';
     }
-    const box = $("cal-scroll"), keep = box.scrollTop;
-    box.innerHTML = html;
-    if (!calScrolled) { scrollToMonth(keyOf(now).slice(0, 7), false); calScrolled = true; } else box.scrollTop = keep;
-  }
-  function scrollToMonth(ym, smooth) {
-    const box = $("cal-scroll"), el = box.querySelector('[data-month="' + ym + '"]');
-    if (el) box.scrollTo({ top: el.offsetTop - box.offsetTop, behavior: smooth ? "smooth" : "auto" });
+    const tail = (7 - (first.getDay() + last.getDate()) % 7) % 7;
+    html += '<div class="cday blank" aria-hidden="true"></div>'.repeat(tail) + '</div></div>';
+    $("cal-scroll").innerHTML = html;
   }
 
   // list view: the next two months, day by day, as cards
@@ -1000,8 +1004,10 @@
   function openSheet(k, pick) { sheetDate = k; remAdd = null; remEditId = null; remOpenId = pick || null; remWhere = "sheet"; renderReminders(); }
   function closeSheet() { sheetDate = null; remAdd = null; remEditId = null; remOpenId = null; remWhere = "page"; document.activeElement?.blur(); renderReminders(); }
 
-  $("cal-today").onclick = () => { if (calView === "month") scrollToMonth(keyOf().slice(0, 7), true); else $("cal-list-view").scrollIntoView({ behavior: "smooth" }); };
-  $("view-month").onclick = () => { calView = "month"; calScrolled = false; renderRemCalendar(); };
+  $("cal-prev").onclick = () => { calOffset--; renderRemCalendar(); };
+  $("cal-next").onclick = () => { calOffset++; renderRemCalendar(); };
+  $("cal-today").onclick = () => { if (calView === "month") { calOffset = 0; renderRemCalendar(); } else $("cal-list-view").scrollIntoView({ behavior: "smooth" }); };
+  $("view-month").onclick = () => { calView = "month"; renderRemCalendar(); };
   $("view-list").onclick = () => { calView = "list"; renderRemCalendar(); };
   $("fab").onclick = () => { openSheet(keyOf()); remAdd = "modal"; remWhere = "sheet"; renderSheet(); $("rf-text-modal")?.focus(); };
   document.addEventListener("keydown", e => { if (e.key === "Escape" && sheetDate) closeSheet(); });
