@@ -682,6 +682,11 @@
       <ul class="receipts" id="receipts"></ul>
     </section>
 
+    <section aria-labelledby="rc-hist-title" id="rc-hist-section" hidden>
+      <h2 id="rc-hist-title">Returned and refunded</h2>
+      <ul class="receipts" id="receipts-history"></ul>
+    </section>
+
     <footer>
       <span id="rc-sync-status">Saved on this device</span>
     <div class="data-links"><button type="button" data-backup>Back up</button><button type="button" data-restore>Restore</button></div>
@@ -1664,21 +1669,23 @@
 
   function renderReceipts() {
     const list = [...(state.receipts || [])].sort((a, b) => (b.orderDate || "") < (a.orderDate || "") ? -1 : 1);
-    // items and tax leave out orders refunded in full; the total takes every refund off
-    const fullyRefunded = r => r.refund && r.total != null && r.refund.amount >= r.total;
-    const kept = list.filter(r => !fullyRefunded(r));
-    const itemsOf = r => r.subtotal != null ? r.subtotal : (r.items || []).reduce((a, it) => a + lineTotal(it), 0);
-    const refunds = list.reduce((a, r) => a + (r.refund ? r.refund.amount : 0), 0);
-    $("rc-items-total").textContent = money(kept.reduce((a, r) => a + itemsOf(r), 0));
-    $("rc-tax-total").textContent = money(kept.reduce((a, r) => a + (r.tax || 0), 0));
-    const gross = list.reduce((a, r) => a + (r.total || 0), 0);
-    // with refunds the top number is everything ordered, and the two lines under it split it into refunded and what's left
-    $("rc-grand-total").textContent = money(gross);
-    $("rc-due-total").textContent = money(gross - refunds);
+    // the top numbers are what you paid and kept. A return moves the items to Due (money owed back to you);
+    // a refund moves it to Refunded. Tax stays unless the refund included it, since that's money you didn't get back.
+    let items = 0, tax = 0, total = 0, refunds = 0, due = 0, open = 0;
+    for (const r of list) {
+      const sp = splitReceipt(r);
+      if (r.refund) { refunds += r.refund.amount; items += sp.itemsLeft; tax += sp.taxLeft; total += sp.itemsLeft + sp.shipLeft + sp.taxLeft; }
+      else if (r.returned) { due += sp.items; tax += sp.tax; total += sp.ship + sp.tax; }
+      else { items += sp.items; tax += sp.tax; total += sp.items + sp.ship + sp.tax; open++; }
+    }
+    $("rc-items-total").textContent = money(items);
+    $("rc-tax-total").textContent = money(tax);
+    $("rc-grand-total").textContent = money(total);
+    $("rc-due-total").textContent = money(due);
     $("rc-ref-line").classList.toggle("some", refunds > 0);
-    $("rc-count").textContent = list.length;
+    $("rc-count").textContent = open;
     $("rc-refund-total").textContent = money(refunds);
-    $("rc-stats-note").textContent = "All saved receipts.";
+    $("rc-stats-note").textContent = list.some(r => r.returned || r.refund) ? "Returned and refunded items are taken out. Tax you didn't get back stays in." : "All saved receipts.";
 
     // still returnable, the one whose window closes first at the top
     const soon = list.filter(r => !r.returned && !r.refund).filter(r => r.returnBy && dayDiff(r.returnBy) >= 0).sort((a, b) => a.returnBy < b.returnBy ? -1 : 1);
@@ -1696,7 +1703,14 @@
     }).join("");
     $("rc-sample-notice").hidden = !list.some(r => r.sample);
 
-    $("receipts").innerHTML = list.length ? list.map(r => {
+    const done = r => r.returned || r.refund;
+    const active = list.filter(r => !done(r)), history = list.filter(done);
+    $("rc-hist-section").hidden = !history.length;
+    $("receipts-history").innerHTML = history.map(receiptLi).join("");
+    $("receipts").innerHTML = active.length ? active.map(receiptLi).join("") : '<li class="empty">' + (list.length ? "Nothing waiting. Returned and refunded orders are below." : "No receipts yet. Upload a screenshot above.") + '</li>';
+  }
+
+  function receiptLi(r) {
       const rl = returnLabel(r);
       return '<li class="receipt' + (r.returned ? " returned" : "") + '" data-id="' + r.id + '">' +
         '<button type="button" class="receipt-row" data-ract="open" aria-expanded="' + (rcOpenId === r.id) + '">' +
@@ -1705,7 +1719,19 @@
           '<div><span class="receipt-amt">' + (r.total != null ? money(r.total) : "") + '<span class="receipt-tax">' + (r.tax != null ? "Tax " + money(r.tax) : "") + '</span></span>' +
           (rl ? '<span class="debt-due ' + rl.cls + '">' + rl.text + '</span>' : "") + '</div>' +
         '</button>' + (rcOpenId === r.id ? receiptDetail(r) : "") + '</li>';
-    }).join("") : '<li class="empty">No receipts yet. Upload a screenshot above.</li>';
+  }
+
+  // how a receipt's money splits up: items, shipping and tax, and what's left of each after a refund.
+  // A refund comes off the items first (then shipping); it covers tax only when marked so,
+  // or when the amount is more than the items and shipping (older refunds saved before the tax choice existed).
+  function splitReceipt(r) {
+    const tax = r.tax || 0, ship = r.shipping || 0;
+    let items = r.subtotal != null ? r.subtotal : (r.items || []).reduce((a, it) => a + lineTotal(it), 0);
+    if (!items && r.total != null) items = Math.max(0, r.total - tax - ship);
+    const R = r.refund ? r.refund.amount : 0;
+    const taxBack = r.refund ? (r.refund.tax ? Math.min(tax, R) : Math.min(tax, Math.max(0, R - items - ship))) : 0;
+    const rest = R - taxBack, itemsBack = Math.min(items, rest), shipBack = Math.min(ship, Math.max(0, rest - items));
+    return { items, ship, tax, itemsLeft: items - itemsBack, shipLeft: ship - shipBack, taxLeft: tax - taxBack };
   }
 
   function receiptDetail(r) {
@@ -1714,7 +1740,7 @@
     const sum = (label, v, cls) => v == null ? "" : '<tr class="' + (cls || "sum") + '"><td>' + label + '</td><td>' + money(v) + '</td></tr>';
     const facts = [["Order date", r.orderDate && shortDate(r.orderDate)], ["Return by", r.returnBy ? shortDate(r.returnBy) : "Not on receipt"],
       ["Order #", r.orderNumber], ["Paid with", r.payment], ["Returned", r.returned && shortDate(r.returned)],
-      ["Refunded", r.refund && money(r.refund.amount) + " on " + shortDate(r.refund.date)]].filter(f => f[1]);
+      ["Refunded", r.refund && money(r.refund.amount) + (r.tax ? (splitReceipt(r).taxLeft < 0.005 ? " with tax" : " without tax") : "") + " on " + shortDate(r.refund.date)]].filter(f => f[1]);
     return '<div class="rc-detail">' +
       '<dl class="rc-facts">' + facts.map(f => '<dt>' + f[0] + '</dt><dd>' + esc(f[1]) + '</dd>').join("") + '</dl>' +
       '<table class="rc-table"><tbody>' + rows + sum("Subtotal", r.subtotal) + sum("Shipping", r.shipping) + sum("Tax", r.tax) + sum("Total", r.total, "total") + '</tbody></table>' +
@@ -1726,11 +1752,18 @@
         '<button class="btn ghost" type="button" data-ract="delete">' + (rcDeleteArmed ? "Tap again to delete" : "Delete") + '</button>' +
       '</div>' +
       (refundOpenId === r.id ? '<div class="rc-grid">' +
-        '<label class="rc-label">Amount refunded<input type="number" id="rf-amount" min="0.01" step="0.01" inputmode="decimal" value="' + (r.total != null ? r.total : "") + '"></label>' +
+        '<label class="rc-label">Amount refunded<input type="number" id="rf-amount" min="0.01" step="0.01" inputmode="decimal" value="' + refundDefault(r, false) + '"></label>' +
         '<label class="rc-label">Date refunded<input type="date" id="rf-date" value="' + keyOf() + '"></label>' +
+        (r.tax ? '<label class="tick" style="grid-column:1/-1"><input type="checkbox" id="rf-tax"> The tax (' + money(r.tax) + ') was refunded too</label>' : "") +
         '<div class="actions" style="grid-column:1/-1"><button class="btn" type="button" data-ract="refund-save">Save refund</button>' +
         '<button class="btn ghost" type="button" data-ract="refund-cancel">Cancel</button></div></div>' : "") +
     '</div>';
+  }
+
+  // a refund starts as the items and shipping without the tax; ticking "tax refunded too" adds it
+  function refundDefault(r, withTax) {
+    const sp = splitReceipt({ ...r, refund: null });
+    return (Math.round((sp.items + sp.ship + (withTax ? sp.tax : 0)) * 100) / 100).toFixed(2);
   }
 
   $("soon-list").addEventListener("click", e => {
@@ -1739,7 +1772,7 @@
     document.querySelector('#receipts li[data-id="' + rcOpenId + '"]')?.scrollIntoView({ block: "start", behavior: "smooth" });
   });
 
-  $("receipts").addEventListener("click", async e => {
+  const onReceiptClick = async e => {
     const b = e.target.closest("[data-ract]"); if (!b) return;
     const li = b.closest("li[data-id]"); const r = state.receipts.find(x => x.id === li.dataset.id); if (!r) return;
     const act = b.dataset.ract;
@@ -1752,7 +1785,7 @@
     else if (act === "refund-save") {
       const amount = num($("rf-amount").value);
       if (!(amount > 0)) { $("rf-amount").focus(); return; }
-      r.refund = { amount, date: $("rf-date").value || keyOf() };
+      r.refund = { amount, date: $("rf-date").value || keyOf(), tax: !!$("rf-tax")?.checked };
       refundOpenId = null; commit();
     }
     else if (act === "edit") { rcFile = null; openRcForm(JSON.parse(JSON.stringify(r))); }
@@ -1761,6 +1794,14 @@
       state.receipts = state.receipts.filter(x => x.id !== r.id);
       rcOpenId = null; rcDeleteArmed = false; commit();
     }
+  };
+  $("receipts").addEventListener("click", onReceiptClick);
+  $("receipts-history").addEventListener("click", onReceiptClick);
+  // ticking "tax refunded too" puts the tax into the amount, unticking takes it out
+  document.addEventListener("change", e => {
+    if (e.target.id !== "rf-tax") return;
+    const r = state.receipts.find(x => x.id === refundOpenId); if (!r) return;
+    $("rf-amount").value = refundDefault(r, e.target.checked);
   });
 
   function openRcForm(draft) {
