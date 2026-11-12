@@ -401,6 +401,11 @@
   .inv-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--c2); }
   .inv-form label.tick { flex-direction: row; align-items: center; gap: 8px; font-size: 13.5px; color: var(--c1); }
   .inv-form label.tick input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .rep-seg { display: flex; }
+  .rep-seg button { flex: 1; }
+  .rep-count { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; margin-top: 8px; font-size: 13.5px; color: var(--c1); }
+  .rep-count[hidden] { display: none !important; }
+  .rep-count input { width: 80px !important; text-align: center; }
   /* yes/no boxes in forms: the app's small round checkbox */
   label.tick { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; font-size: 13.5px; color: var(--c1); margin: 4px 0; cursor: pointer; }
   label.tick input[type="checkbox"] { -webkit-appearance: none; appearance: none; flex: none; width: 20px !important; height: 20px !important; min-width: 0; margin: 0; padding: 0;
@@ -830,7 +835,7 @@
   // where: "page" or "sheet"; a reminder's Edit/Delete panel and edit form show only where it was tapped
   let remWhere = "page";
   function remHTML(r, where) {
-    const when = r.time ? fmt(r.time) : "";
+    const when = [r.time ? fmt(r.time) : "", r.series ? "Repeats " + ({ day: "daily", week: "weekly", month: "monthly" }[r.every] || "") : ""].filter(Boolean).join(" · ");
     const soon = r.date === keyOf() && r.time && !r.done && toMin(r.time) >= nowMinutes() && toMin(r.time) - nowMinutes() <= 60;
     const here = remWhere === where;
     const open = here && remOpenId === r.id && remEditId !== r.id;
@@ -840,7 +845,8 @@
     '</li>' +
     (open ? '<li class="rem-actions" data-rid="' + r.id + '"><button class="btn ghost" type="button" data-ract2="edit">Edit</button>' +
       (r.date ? '<button class="btn ghost" type="button" data-ract2="tomorrow">Move to next day</button>' : "") +
-      '<button class="btn ghost" type="button" data-ract2="delete">' + (remDelArmed ? "Tap again to delete" : "Delete") + '</button>' +
+      '<button class="btn ghost" type="button" data-ract2="delete">' + (remDelArmed === true ? "Tap again to delete" : r.series ? "Delete this one" : "Delete") + '</button>' +
+      (r.series ? '<button class="btn ghost" type="button" data-ract2="delete-series">' + (remDelArmed === "series" ? "Tap again to delete all" : "Delete this and later repeats") + '</button>' : "") +
       '<button class="btn ghost" type="button" data-ract2="close">Close</button></li>' : "") +
     (here && remEditId === r.id ? '<li>' + remFormHTML("edit", r) + '</li>' : "");
   }
@@ -853,12 +859,29 @@
         '<input class="pick-input" type="' + type + '" id="' + id + '" value="' + (value || "") + '" aria-label="' + label + '"></label>' +
       '<button type="button" class="linkish pick-clear" data-clear="' + id + '"' + (value ? "" : " hidden") + '>Clear</button></div></div>';
   }
+  // a repeating reminder is saved as one reminder per date, all sharing a series id
+  const REPEATS = [["once", "Once"], ["day", "Daily"], ["week", "Weekly"], ["month", "Monthly"]];
+  const REP_UNIT = { day: "days", week: "weeks", month: "months" };
+  function repeatDates(start, every, n) {
+    const out = [], d0 = dateOf(start);
+    for (let i = 0; i < n; i++) {
+      let d;
+      if (every === "day") { d = new Date(d0); d.setDate(d0.getDate() + i); }
+      else if (every === "week") { d = new Date(d0); d.setDate(d0.getDate() + 7 * i); }
+      else { d = new Date(d0.getFullYear(), d0.getMonth() + i, 1); d.setDate(Math.min(d0.getDate(), new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate())); }
+      out.push(keyOf(d));
+    }
+    return out;
+  }
   function remFormHTML(scope, r) {
     const date = r ? (r.date || "") : scope === "today" ? keyOf() : scope === "modal" ? sheetDate : "";
     return '<form class="rem-form" data-rscope="' + scope + '" autocomplete="off">' +
       '<label class="full">Reminder<input type="text" id="rf-text-' + scope + '" maxlength="140" required value="' + (r ? esc(r.text) : "") + '"></label>' +
       pickHTML("date", "rf-date-" + scope, date, "Date") +
       pickHTML("time", "rf-time-" + scope, r && r.time ? r.time : "", "Time") +
+      (scope === "edit" ? "" : '<div class="pick"><span class="pick-label">Repeat (optional)</span>' +
+        '<div class="seg2 rep-seg">' + REPEATS.map(([k, label]) => '<button type="button" data-repeat="' + k + '" aria-pressed="' + (k === "once") + '">' + label + '</button>').join("") + '</div>' +
+        '<label class="rep-count" hidden><span class="rep-label">How many weeks</span><input type="number" id="rf-count-' + scope + '" min="2" max="60" step="1" inputmode="numeric" value="4"></label></div>') +
       '<div class="pick"><span class="pick-label">Color (optional)</span><div class="colors" data-colors="' + scope + '">' +
         COLORS.map(([k, v]) => '<button type="button" data-color="' + k + '" style="--sw:' + v + '" aria-label="' + k + '" aria-pressed="' + ((r && r.color || "blue") === k) + '"></button>').join("") + '</div></div>' +
       '<div class="actions full"><button class="btn" type="submit">' + (r ? "Save" : "Add") + '</button>' +
@@ -1037,6 +1060,14 @@
       const go = e.target.closest("[data-sheet-go]");
       if (go) { openSheet(go.dataset.sheetGo); return; }
     }
+    const rp = e.target.closest("[data-repeat]");
+    if (rp) {
+      rp.parentElement.querySelectorAll("[data-repeat]").forEach(x => x.setAttribute("aria-pressed", x === rp));
+      const box = rp.closest(".pick").querySelector(".rep-count");
+      box.hidden = rp.dataset.repeat === "once";
+      box.querySelector(".rep-label").textContent = "How many " + (REP_UNIT[rp.dataset.repeat] || "times");
+      return;
+    }
     const sw = e.target.closest("[data-color]");
     if (sw) { sw.parentElement.querySelectorAll("[data-color]").forEach(x => x.setAttribute("aria-pressed", x === sw)); return; }
     const clr = e.target.closest("[data-clear]");
@@ -1056,8 +1087,13 @@
     else if (act === "close") { remOpenId = null; remDelArmed = false; renderReminders(); }
     else if (act === "edit") { remEditId = r.id; remOpenId = null; remAdd = null; remWhere = where; renderReminders(); }
     else if (act === "tomorrow") { const d = dateOf(r.date); d.setDate(d.getDate() + 1); r.date = keyOf(d); remOpenId = null; commit(); }
+    else if (act === "delete-series") {
+      if (remDelArmed !== "series") { remDelArmed = "series"; b.textContent = "Tap again to delete all"; return; }
+      // this one and the ones after it; earlier ones stay as a record
+      state.reminders = state.reminders.filter(x => !(x.series === r.series && (x.date || "") >= (r.date || ""))); remOpenId = null; remDelArmed = false; commit();
+    }
     else if (act === "delete") {
-      if (!remDelArmed) { remDelArmed = true; b.textContent = "Tap again to delete"; return; }
+      if (remDelArmed !== true) { remDelArmed = true; b.textContent = "Tap again to delete"; return; }
       state.reminders = state.reminders.filter(x => x.id !== r.id); remOpenId = null; remDelArmed = false; commit();
     }
   }
@@ -1074,7 +1110,12 @@
     if (time) r.time = time; else delete r.time;
     const color = f.querySelector('[data-color][aria-pressed="true"]')?.dataset.color;
     if (color && color !== "blue") r.color = color; else delete r.color;
-    if (scope !== "edit") state.reminders.push(r);
+    const every = f.querySelector('[data-repeat][aria-pressed="true"]')?.dataset.repeat || "once";
+    if (scope !== "edit" && every !== "once") {
+      const n = Math.max(2, Math.min(60, Math.round(num(v("count")) || 4)));
+      const series = uid(), start = r.date || keyOf();
+      for (const d of repeatDates(start, every, n)) state.reminders.push({ ...r, id: uid(), date: d, series, every });
+    } else if (scope !== "edit") state.reminders.push(r);
     remAdd = null; remEditId = null; remOpenId = null; document.activeElement?.blur(); commit();
   }
   for (const [el, where] of [[$("page-reminders"), "page"], [$("day-modal"), "sheet"]]) {
