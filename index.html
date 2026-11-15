@@ -65,6 +65,13 @@
   h2 { margin: 0 0 12px; font-size: 17px; font-weight: 700; color: var(--c1); }
   .muted { color: var(--c3); font-size: 13.5px; margin: 0; }
 
+  .notif-btn { align-self: flex-start; margin-top: 8px; padding: 4px 12px; font-size: 12.5px; }
+  .notif-panel { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; padding: 12px; border: 1px solid var(--c4); font-size: 13.5px; }
+  .notif-panel p { margin: 0; color: var(--c2); }
+  .notif-time { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--c1); }
+  .notif-time input { width: 150px !important; flex: none; }
+  .notif-note { font-size: 12.5px; }
+  .notif-note:empty { display: none; }
   .banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px; background: var(--accent); color: var(--on-accent); }
   .banner span { flex: 1 1 200px; font-weight: 500; }
   .banner .btn { background: var(--c5); color: var(--c1); border-color: var(--c5); padding: 6px 14px; font-size: 13.5px; }
@@ -577,6 +584,14 @@
     <div class="head-row">
       <h1 id="date-line">Today</h1>
       <div class="clock" id="clock">--:--</div>
+    </div>
+    <button type="button" class="btn ghost notif-btn" id="notif-open">Add notifications</button>
+    <div class="notif-panel" id="notif-panel" hidden>
+      <p>Puts your coming reminders, money due dates and last days to return into your phone's Calendar, each with an alert, so your phone reminds you even when this app is closed.</p>
+      <label class="notif-time">Alert time for things with no time<input type="time" id="notif-time" value="09:00"></label>
+      <label class="tick"><input type="checkbox" id="notif-all"> Send everything again (not just what's new)</label>
+      <div class="actions"><button type="button" class="btn" id="notif-go">Add to Calendar</button><button type="button" class="btn ghost" id="notif-close">Cancel</button></div>
+      <p class="notif-note" id="notif-note"></p>
     </div>
   </header>
 
@@ -1125,6 +1140,65 @@
     el.addEventListener("change", e => { if (e.target.classList.contains("pick-input")) syncPick(e.target); });
   }
   $("clear-samples").onclick = () => { state.reminders = state.reminders.filter(r => !r.sample); commit(); };
+
+  // ---- notifications: the phone's own Calendar does the alerting. The app builds a calendar file (.ics) with an alert on
+  // each event; the phone offers to add them. Things already sent are remembered so they aren't added twice.
+  const icsText = t => String(t).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  const icsFold = line => { let out = "", s = line; while (s.length > 73) { out += s.slice(0, 73) + "\r\n "; s = s.slice(73); } return out + s; };
+  const icsDate = k => k.replace(/-/g, "");
+  function buildIcs(items, alertAt) {
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+    const [ah, am] = alertAt.split(":").map(Number);
+    const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//TaskForce//Reminders//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+    for (const it of items) {
+      L.push("BEGIN:VEVENT", "UID:" + it.key + "@taskforce", "DTSTAMP:" + stamp, "SUMMARY:" + icsText(it.text));
+      if (it.time) {
+        const start = dateOf(it.date); const [h, m] = it.time.split(":").map(Number); start.setHours(h, m);
+        const end = new Date(start.getTime() + 30 * 60000);
+        const f = d => keyOf(d).replace(/-/g, "") + "T" + String(d.getHours()).padStart(2, "0") + String(d.getMinutes()).padStart(2, "0") + "00";
+        L.push("DTSTART:" + f(start), "DTEND:" + f(end));
+        L.push("BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + icsText(it.text), "TRIGGER:PT0M", "END:VALARM");
+      } else {
+        const next = dateOf(it.date); next.setDate(next.getDate() + 1);
+        L.push("DTSTART;VALUE=DATE:" + icsDate(it.date), "DTEND;VALUE=DATE:" + icsDate(keyOf(next)));
+        // an all-day event's alert, counted from midnight of that day
+        L.push("BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + icsText(it.text), "TRIGGER:PT" + ah + "H" + am + "M", "END:VALARM");
+      }
+      L.push("END:VEVENT");
+    }
+    L.push("END:VCALENDAR");
+    return L.map(icsFold).join("\r\n") + "\r\n";
+  }
+  function notifItems() {
+    const today = keyOf();
+    return withAuto(state.reminders).filter(r => r.date && r.date >= today && !r.done && !r.sample)
+      .map(r => ({ key: (r.auto ? r.id.replace(":", "-") : r.id) + "-" + r.date + (r.time ? "-" + r.time.replace(":", "") : ""), text: r.text, date: r.date, time: r.time || "" }));
+  }
+  $("notif-open").onclick = () => {
+    $("notif-time").value = state.prefs.alertTime || "09:00"; $("notif-all").checked = false; $("notif-note").textContent = "";
+    $("notif-panel").hidden = false; $("notif-open").hidden = true;
+  };
+  $("notif-close").onclick = () => { $("notif-panel").hidden = true; $("notif-open").hidden = false; };
+  $("notif-go").onclick = async () => {
+    const alertAt = $("notif-time").value || "09:00", sent = new Set(state.prefs.sentToCal || []);
+    const all = notifItems(), items = $("notif-all").checked ? all : all.filter(it => !sent.has(it.key));
+    if (!items.length) { $("notif-note").textContent = all.length ? "Everything coming up is already in your Calendar. Tick \"Send everything again\" to send it all once more." : "Nothing coming up with a date yet."; return; }
+    const file = new File([buildIcs(items, alertAt)], "TaskForce reminders.ics", { type: "text/calendar" });
+    let done = false;
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: "Add to Calendar" }); done = true; }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    if (!done) {
+      // Safari opens a calendar file with "Add All" straight into Calendar
+      const url = URL.createObjectURL(file), a = document.createElement("a");
+      a.href = url; a.download = "TaskForce reminders.ics"; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+    state.prefs.alertTime = alertAt;
+    state.prefs.sentToCal = [...new Set([...(state.prefs.sentToCal || []), ...items.map(it => it.key)])].slice(-2000);
+    commit();
+    $("notif-panel").hidden = true; $("notif-open").hidden = false;
+    alertBar("Sent " + items.length + (items.length === 1 ? " item" : " items") + " to your Calendar. Choose Calendar (or Add All) on your phone to finish.");
+  };
 
   // ---- pages
   const PAGES = ["reminders", "owe", "receipts"];
