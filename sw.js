@@ -1,6 +1,6 @@
-// Keeps the app working offline: the page is fetched fresh when there's a connection
-// and served from the cache when there isn't; everything else is cached on first use.
-const CACHE = "checklist-v39";
+// Makes the app open instantly: the page comes from the copy saved on the phone, and a newer version is
+// fetched in the background (the app offers to switch to it). Everything else is cached on first use.
+const CACHE = "checklist-v40";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png",
   "fonts/petrona-latin-400-normal.woff2", "fonts/petrona-latin-600-normal.woff2", "fonts/petrona-latin-700-normal.woff2"];
 
@@ -18,9 +18,20 @@ self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
   if (req.mode === "navigate") {
-    e.respondWith(fetch(req)
-      .then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put("index.html", copy)); return res; })
-      .catch(() => caches.match("index.html")));
+    // open straight from the copy on the phone; check for a newer version in the background for next time
+    const update = fetch(req, { cache: "no-store" }).then(async res => {
+      if (!res.ok) return null;
+      const cache = await caches.open(CACHE), old = await cache.match("index.html");
+      const fresh = await res.clone().text(), before = old ? await old.text() : null;
+      await cache.put("index.html", res.clone());
+      if (before !== null && before !== fresh) {
+        const all = await self.clients.matchAll({ type: "window" });
+        all.forEach(c => c.postMessage("updated"));
+      }
+      return res;
+    }).catch(() => null);
+    e.waitUntil(update);
+    e.respondWith(caches.match("index.html").then(hit => hit || update.then(r => r || Response.error())));
     return;
   }
   e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => {

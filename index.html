@@ -2366,6 +2366,15 @@
   // works offline once installed on the home screen
   if ("serviceWorker" in navigator && location.protocol === "https:" && !/claude/.test(location.hostname)) {
     navigator.serviceWorker.register("sw.js").catch(() => {});
+    // a newer version arrived in the background: offer it, so nothing changes in the middle of typing
+    navigator.serviceWorker.addEventListener("message", e => {
+      if (e.data !== "updated" || document.getElementById("update-bar")) return;
+      const bar = document.createElement("button");
+      bar.id = "update-bar"; bar.type = "button"; bar.textContent = "A new version is ready. Tap to update.";
+      bar.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:max(16px,env(safe-area-inset-bottom));z-index:50;font:inherit;font-size:13.5px;font-weight:600;padding:10px 16px;border:0;background:var(--c1);color:var(--c5);cursor:pointer;max-width:calc(100% - 32px)";
+      bar.onclick = () => location.reload();
+      document.body.append(bar);
+    });
   }
 </script>
 </body>
