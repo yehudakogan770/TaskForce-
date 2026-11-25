@@ -438,6 +438,14 @@
   .ig-ticks { display: flex; gap: 10px; }
   .ig-ticks label { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: var(--c3); cursor: pointer; }
   .ig-ticks .amt { color: var(--warm-text); font-weight: 600; }
+  .ig-ticks .rep { font-weight: 600; color: var(--c1); }
+  .ig-ticks .rep.no { color: var(--c2); }
+  .ig-name .reply-line { color: var(--c1); }
+  .ig-reply { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; font-size: 13.5px; }
+  .ig-reply .seg2 { display: flex; }
+  .ig-reply .seg2 button { flex: 1; padding: 0 4px; height: 34px; }
+  .ig-other { display: flex; gap: 8px; }
+  .ig-other input { flex: 1; min-width: 0; }
   .ig-edit { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
   .ig-edit label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--c2); min-width: 0; }
   .ig-edit .full { grid-column: 1 / -1; }
@@ -1284,7 +1292,10 @@
   };
 
   // ---- Instagram outreach: accounts messaged, and whether they replied, partnered and paid
-  let igFilter = "all", igOpenId = null, igDelArmed = false, igFound = null;
+  let igFilter = "all", igOpenId = null, igDelArmed = false, igFound = null, igReplyOpen = null;
+  // reply: "yes" (said yes), "no" (said no), "other" (with a note); none = no reply yet. Older entries kept a plain true.
+  const igReplied = x => !!(x.reply || x.replied);
+  const igReplyText = x => x.reply === "yes" ? "Replied yes" : x.reply === "no" ? "Replied no" : x.reply === "other" ? "Replied" + (x.replyNote ? ": " + x.replyNote : "") : x.replied ? "Replied" : "";
   const igNorm = a => String(a || "").trim().replace(/^@+/, "").toLowerCase();
   const nowLocal = () => { const d = new Date(); return keyOf(d) + "T" + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
   const igWhen = at => { if (!at) return ""; const [k, t] = at.split("T"); return shortDate(k) + (t ? " · " + fmt(t) : ""); };
@@ -1383,19 +1394,24 @@
     const list = Array.isArray(state.ig) ? state.ig : [];
     const paid = list.filter(x => x.paid), earned = paid.reduce((a, x) => a + (num(x.amount) || 0), 0);
     $("ig-n-sent").textContent = list.length;
-    $("ig-n-replied").textContent = list.filter(x => x.replied).length;
+    $("ig-n-replied").textContent = list.filter(igReplied).length;
     $("ig-n-partner").textContent = list.filter(x => x.partner).length;
     $("ig-n-paid").textContent = paid.length;
     $("ig-paid-total").textContent = earned ? money(earned) : "";
     document.querySelectorAll("[data-igf]").forEach(b => b.setAttribute("aria-pressed", b.dataset.igf === igFilter));
-    const shown = list.filter(x => igFilter === "all" || (igFilter === "waiting" ? !x.replied : x[igFilter]))
+    const shown = list.filter(x => igFilter === "all" || (igFilter === "waiting" ? !igReplied(x) : igFilter === "replied" ? igReplied(x) : x[igFilter]))
       .sort((a, b) => (b.at || "").localeCompare(a.at || ""));
     const tick = (x, k, label) => '<label><input type="checkbox" class="round" data-igtick="' + k + '"' + (x[k] ? " checked" : "") + '>' + label + '</label>';
     $("ig-list").innerHTML = shown.length ? shown.map(x => '<li class="ig-item" data-id="' + x.id + '"><div class="ig-row">' +
       '<button type="button" class="ig-name" data-igopen><b>' + esc((/\s/.test(x.account) ? "" : "@") + x.account) + '</b><span>' + esc(igWhen(x.at)) + '</span>' +
+        (igReplied(x) ? '<span class="note reply-line">' + esc(igReplyText(x)) + '</span>' : "") +
         (x.notes ? '<span class="note">' + esc(x.notes) + '</span>' : "") + '</button>' +
-      '<div class="ig-ticks">' + tick(x, "replied", "Replied") + tick(x, "partner", "Partner") +
+      '<div class="ig-ticks"><label><input type="checkbox" class="round" data-igreply' + (igReplied(x) ? " checked" : "") + '>' +
+          (x.reply === "yes" ? '<span class="rep yes">Yes</span>' : x.reply === "no" ? '<span class="rep no">No</span>' : "Replied") + '</label>' + tick(x, "partner", "Partner") +
         '<label><input type="checkbox" class="round" data-igtick="paid"' + (x.paid ? " checked" : "") + '>' + (x.paid && num(x.amount) ? '<span class="amt">' + money(num(x.amount)) + '</span>' : "Paid") + '</label></div></div>' +
+      (igReplyOpen === x.id ? '<div class="ig-reply"><span>Did they reply?</span><div class="seg2">' +
+        [["yes", "Yes"], ["no", "No"], ["other", "Other"], ["", "No reply yet"]].map(([k, l]) => '<button type="button" data-igans="' + k + '" aria-pressed="' + ((x.reply || "") === k) + '">' + l + '</button>').join("") + '</div>' +
+        (x.reply === "other" ? '<div class="ig-other"><input type="text" data-igothertext value="' + esc(x.replyNote || "") + '" placeholder="What did they say?"><button type="button" class="btn" data-igothersave>Save</button></div>' : "") + '</div>' : "") +
       (igOpenId === x.id ? '<div class="ig-edit">' +
         '<label>Account<input type="text" data-igf2="account" value="' + esc(x.account) + '" autocapitalize="none" spellcheck="false"></label>' +
         '<label>Messaged on<input type="datetime-local" data-igf2="at" value="' + esc(x.at || "") + '"></label>' +
@@ -1407,6 +1423,8 @@
   }
   document.querySelector(".ig-filter").addEventListener("click", e => { const b = e.target.closest("[data-igf]"); if (b) { igFilter = b.dataset.igf; renderIg(); } });
   $("ig-list").addEventListener("change", e => {
+    const rp = e.target.closest("[data-igreply]");
+    if (rp) { rp.checked = igReplied(state.ig.find(y => y.id === rp.closest("[data-id]").dataset.id) || {}); const id = rp.closest("[data-id]").dataset.id; igReplyOpen = igReplyOpen === id ? null : id; renderIg(); return; }
     const t = e.target.closest("[data-igtick]"); if (!t) return;
     const x = state.ig.find(y => y.id === t.closest("[data-id]").dataset.id); if (!x) return;
     x[t.dataset.igtick] = t.checked;
@@ -1417,6 +1435,16 @@
   $("ig-list").addEventListener("click", e => {
     const li = e.target.closest("[data-id]"); if (!li) return;
     const x = state.ig.find(y => y.id === li.dataset.id); if (!x) return;
+    const ans = e.target.closest("[data-igans]");
+    if (ans) {
+      const k = ans.dataset.igans; delete x.replied;
+      if (k) x.reply = k; else { delete x.reply; delete x.replyNote; }
+      if (k !== "other") { delete x.replyNote; igReplyOpen = null; }
+      commit();
+      if (k === "other") setTimeout(() => li.querySelector("[data-igothertext]")?.focus(), 30);
+      return;
+    }
+    if (e.target.closest("[data-igothersave]")) { x.replyNote = li.querySelector("[data-igothertext]").value.trim(); igReplyOpen = null; document.activeElement?.blur(); commit(); return; }
     if (e.target.closest("[data-igopen]")) { igOpenId = igOpenId === x.id ? null : x.id; igDelArmed = false; renderIg(); return; }
     if (e.target.closest("[data-igclose]")) { igOpenId = null; igDelArmed = false; renderIg(); return; }
     if (e.target.closest("[data-igsave]")) {
@@ -2589,7 +2617,7 @@
   }
 
   prune(); saveLocal(); renderSoundBtn(); render();
-  setInterval(() => { checkReminders(); if (!sheetDate && !remEditId && !remOpenId && !remAdd && !oweEditId && !refundOpenId && !addAmtId && !invoiceId && !igOpenId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
+  setInterval(() => { checkReminders(); if (!sheetDate && !remEditId && !remOpenId && !remAdd && !oweEditId && !refundOpenId && !addAmtId && !invoiceId && !igOpenId && !igReplyOpen) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
 
   (async () => {
     if (!window.claude || !window.claude.use) return;
