@@ -802,17 +802,6 @@
       </div>
     </section>
 
-    <section aria-labelledby="ig-add-title">
-      <h2 id="ig-add-title">Add accounts</h2>
-      <div class="drop" id="ig-drop">
-        <p>Choose or paste a screenshot of your messages list. The account names get read for you, and you pick which ones to save.</p>
-        <label class="btn">Choose screenshot<input type="file" id="ig-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
-        <button type="button" class="linkish" id="ig-manual">Or type an account in</button>
-      </div>
-      <p class="rc-status" id="ig-status" role="status" hidden></p>
-      <div id="ig-found"></div>
-    </section>
-
     <section aria-labelledby="ig-list-title">
       <h2 id="ig-list-title">Accounts</h2>
       <div class="seg2 ig-filter" role="group" aria-label="Show">
@@ -823,6 +812,17 @@
         <button type="button" data-igf="paid" aria-pressed="false">Paid</button>
       </div>
       <ul class="ig-list" id="ig-list"></ul>
+    </section>
+
+    <section aria-labelledby="ig-add-title">
+      <h2 id="ig-add-title">Add accounts</h2>
+      <div class="drop" id="ig-drop">
+        <p>Choose or paste a screenshot of your messages list. The account names get read for you, and you pick which ones to save.</p>
+        <label class="btn">Choose screenshot<input type="file" id="ig-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+        <button type="button" class="linkish" id="ig-manual">Or type an account in</button>
+      </div>
+      <p class="rc-status" id="ig-status" role="status" hidden></p>
+      <div id="ig-found"></div>
     </section>
 
     <footer>
@@ -1370,6 +1370,9 @@
         igFound = { rows: names.map(n => ({ name: n.name, pic: n.pic, at: igAt(n.ago), guessed: n.ago == null, on: !have.has(igNorm(n.name)), dup: have.get(igNorm(n.name)) })) };
       }
       renderIgFound();
+      // the add box is at the bottom of the page: bring the results into view
+      const pg = $("page-ig"), box = $("ig-status");
+      pg.scrollTo({ top: pg.scrollTop + box.getBoundingClientRect().top - pg.getBoundingClientRect().top - 60, behavior: "smooth" });
     } catch { igStatus("That screenshot couldn't be read. You can type the accounts in instead."); igFound = { rows: [{ name: "", on: true, at: nowLocal() }] }; renderIgFound(); }
     finally { rcBusy = false; }
   }
