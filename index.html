@@ -65,7 +65,11 @@
   h2 { margin: 0 0 12px; font-size: 17px; font-weight: 700; color: var(--c1); }
   .muted { color: var(--c3); font-size: 13.5px; margin: 0; }
 
-  .notif-btn { align-self: flex-start; margin-top: 8px; padding: 4px 12px; font-size: 12.5px; }
+  .notif-btns { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+  .notif-btn { padding: 4px 12px; font-size: 12.5px; }
+  .notif-how { font-size: 12.5px; }
+  .sync-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; color: var(--c1); }
+  .sync-steps ul { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
   .notif-panel { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; padding: 12px; border: 1px solid var(--c4); font-size: 13.5px; }
   .notif-panel p { margin: 0; color: var(--c2); }
   .notif-time { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--c1); }
@@ -621,7 +625,31 @@
       <h1 id="date-line">Today</h1>
       <div class="clock" id="clock">--:--</div>
     </div>
-    <button type="button" class="btn ghost notif-btn" id="notif-open">Add notifications</button>
+    <div class="notif-btns">
+      <button type="button" class="btn ghost notif-btn" id="notif-open">Add notifications</button>
+      <button type="button" class="btn ghost notif-btn" id="rem-sync">Update phone Reminders</button>
+      <button type="button" class="linkish notif-how" id="rem-sync-how">How to set up</button>
+    </div>
+    <div class="notif-panel" id="rem-sync-help" hidden>
+      <p><b>One-time setup on your iPhone</b> (about 2 minutes):</p>
+      <ol class="sync-steps">
+        <li>In the <b>Reminders</b> app, add a list called <b>TaskForce</b>.</li>
+        <li>In the <b>Shortcuts</b> app, tap <b>+</b> and name the shortcut exactly <b>TaskForce Reminders</b>.</li>
+        <li>Add <b>Find Reminders</b>. Add the filters <b>List is TaskForce</b> and <b>Is Not Completed</b>.</li>
+        <li>Add <b>Remove Reminders</b> (it uses the found reminders). Tap the arrow on it and turn off <b>Confirm Before Deleting</b>.</li>
+        <li>Add <b>Split Text</b>: split <b>Shortcut Input</b> by <b>New Lines</b>.</li>
+        <li>Add <b>Repeat with Each</b> (item in Split Text). Inside it:
+          <ul>
+            <li><b>Split Text</b>: split <b>Repeat Item</b> by <b>Custom</b>, and type <b>|</b> (the straight line).</li>
+            <li><b>Get Item from List</b>: <b>First Item</b>.</li>
+            <li><b>Get Item from List</b> again: <b>Last Item</b> of the Split Text, then <b>Get Dates from Input</b>.</li>
+            <li><b>Add New Reminder</b>: the title is the <b>First Item</b>, the list is <b>TaskForce</b>, turn on <b>Remind Me</b> and set it to <b>Dates</b>.</li>
+          </ul></li>
+        <li>Done. Come back here and tap <b>Update phone Reminders</b>. The first time, Shortcuts asks for permission. Tap <b>Allow</b>.</li>
+      </ol>
+      <p>Each update replaces what's in the TaskForce list with what's coming up here, so changes and deletions carry over. Mark things done here too, or they come back on the next update.</p>
+      <div class="actions"><button type="button" class="btn ghost" id="rem-sync-close">Close</button></div>
+    </div>
     <div class="notif-panel" id="notif-panel" hidden>
       <p>Puts your coming reminders, money due dates and last days to return into your phone's Calendar, each with an alert, so your phone reminds you even when this app is closed.</p>
       <label class="notif-time">Alert time for things with no time<input type="time" id="notif-time" value="09:00"></label>
@@ -1260,6 +1288,21 @@
     $("notif-panel").hidden = false; $("notif-open").hidden = true;
   };
   $("notif-close").onclick = () => { $("notif-panel").hidden = true; $("notif-open").hidden = false; };
+  // the phone's Reminders app: a Shortcut named "TaskForce Reminders" takes one line per reminder,
+  // "title | YYYY-MM-DD HH:MM", clears the TaskForce list and adds them again
+  $("rem-sync-how").onclick = () => { $("rem-sync-help").hidden = !$("rem-sync-help").hidden; };
+  $("rem-sync-close").onclick = () => { $("rem-sync-help").hidden = true; };
+  $("rem-sync").onclick = () => {
+    const at = state.prefs.alertTime || "09:00";
+    const items = notifItems().sort((a, b) => (a.date + (a.time || at)).localeCompare(b.date + (b.time || at)));
+    if (!items.length) { alertBar("Nothing coming up with a date to send to Reminders."); return; }
+    const text = items.map(it => it.text.replace(/[|\n]/g, " ") + " | " + it.date + " " + (it.time || at)).join("\n");
+    const link = document.createElement("a");
+    link.href = "shortcuts://run-shortcut?name=" + encodeURIComponent("TaskForce Reminders") + "&input=text&text=" + encodeURIComponent(text);
+    document.body.append(link); link.click(); link.remove();
+    state.prefs.remSynced = Date.now(); commit();
+    alertBar("Sending " + items.length + (items.length === 1 ? " reminder" : " reminders") + " to your Reminders app. If nothing happens, tap \"How to set up\" first.");
+  };
   $("notif-go").onclick = async () => {
     const alertAt = $("notif-time").value || "09:00", sent = new Set(state.prefs.sentToCal || []);
     const all = notifItems(), items = $("notif-all").checked ? all : all.filter(it => !sent.has(it.key));
