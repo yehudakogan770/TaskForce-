@@ -422,6 +422,8 @@
   .ig-found li { display: grid; grid-template-columns: 28px 1fr; align-items: center; gap: 6px; }
   .ig-found li input[type="text"] { width: 100%; height: 40px !important; }
   .ig-found .dup { grid-column: 2; font-size: 11.5px; color: var(--c3); margin-top: -4px; }
+  .ig-found .row-at { grid-column: 2; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--c3); margin-bottom: 6px; }
+  .ig-found .row-at input { width: 215px !important; height: 34px !important; font-size: 14px !important; flex: none; }
   .ig-found .when { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; }
   .ig-found .when input { width: 210px !important; flex: none; }
   .round { -webkit-appearance: none; appearance: none; flex: none; width: 20px; height: 20px; margin: 0; border: 1.5px solid var(--c3); border-radius: 50%; background: var(--c5); cursor: pointer; }
@@ -1291,33 +1293,51 @@
   // a messages list reads as: name, then a preview line ("You: hi · 2h", "Sent 3h ago", "Seen", "Active 5m ago")
   const IG_SKIP = /^(messages|message|requests?|primary|general|search|ask meta ai.*|your note|notes?|channels|hidden requests|edit|new message|active now|today|yesterday|send message|camera|chats?|unread|see all|following|followers|home|reels|profile|instagram)$/i;
   const IG_PREVIEW = /(^you:|^you sent|^sent\b|^seen\b|^active\b|^liked\b|^reacted\b|^replied\b|^mentioned\b|^sent you|^shared\b|^typing|\bago\b|·|•|\b\d+\s?[smhdw]\b|\b\d+\s?(min|mins|hr|hrs|wk|wks)\b|^\d+ new messages?|^new message)/i;
+  // "Sent 43m ago", "· 2h", "Sent 3d ago", "1w" -> minutes ago ("Active 2h ago" is when they were online, not when you wrote)
+  function igAgo(preview) {
+    if (/^active/i.test(preview)) return null;
+    if (/\b(just now|now)\b/i.test(preview)) return 0;
+    const m = preview.match(/(\d+)\s*(s|secs?|seconds?|m|mins?|minutes?|h|hrs?|hours?|d|days?|w|wks?|weeks?|y|yrs?|years?)\b(?!\w)/i);
+    if (!m) return /yesterday/i.test(preview) ? 1440 : null;
+    const n = +m[1], u = m[2][0].toLowerCase();
+    return n * ({ s: 1 / 60, m: 1, h: 60, d: 1440, w: 10080, y: 525600 }[u] || 1);
+  }
+  // a name as read: drop bits of badges and emoji at the end ("glowbeauty.co v", "fitwithdan O)") and a cut-off "…"
+  function igClean(l) {
+    let t = l.replace(/[…]+|\.{3,}$/g, "").replace(/^[^A-Za-z0-9@]+/, "").trim();
+    for (let i = 0; i < 3; i++) t = t.replace(/\s+(\S{1,2}|[^A-Za-z0-9\s]+)$/, "").trim();
+    return t.replace(/[^A-Za-z0-9._)\]!]+$/, "").trim();
+  }
   function igParse(text) {
-    const lines = text.split(/\n/).map(l => l.replace(/^[^A-Za-z0-9@._]+/, "").replace(/[^A-Za-z0-9._)\]]+$/, "").trim()).filter(Boolean);
+    const lines = text.split(/\n/).map(l => l.trim()).filter(Boolean);
     const out = [];
-    const ok = l => l.length >= 2 && l.length <= 40 && l.split(/\s+/).length <= 4 && !IG_SKIP.test(l) && !IG_PREVIEW.test(l) && /[A-Za-z]/.test(l) && !/^\d/.test(l);
+    const ok = l => l.length >= 2 && l.length <= 60 && !IG_SKIP.test(l) && !IG_PREVIEW.test(l) && /[A-Za-z]{2}/.test(l) && !/^\d/.test(l);
     for (let i = 0; i < lines.length; i++) {
-      const l = lines[i], next = lines[i + 1] || "";
-      if (ok(l) && IG_PREVIEW.test(next)) out.push(l);
+      const name = igClean(lines[i]), next = lines[i + 1] || "";
+      if (ok(name) && (IG_PREVIEW.test(next) || /^(seen|delivered)\b/i.test(next))) { out.push({ name, ago: igAgo(next) }); i++; }
     }
     // nothing in that shape: fall back to anything that looks like a username
-    if (!out.length) for (const l of lines) if (/^@?[a-z0-9._]{3,30}$/i.test(l) && /[._\d]|^@/.test(l) && !IG_SKIP.test(l)) out.push(l);
+    if (!out.length) for (const l of lines.map(igClean)) if (/^@?[a-z0-9._]{3,30}$/i.test(l) && /[._\d]|^@/.test(l) && !IG_SKIP.test(l)) out.push({ name: l, ago: null });
     const seen = new Set();
-    return out.map(a => a.replace(/^@/, "")).filter(a => { const k = igNorm(a); if (seen.has(k)) return false; seen.add(k); return true; });
+    return out.map(a => ({ ...a, name: a.name.replace(/^@/, "") })).filter(a => { const k = igNorm(a.name); if (seen.has(k)) return false; seen.add(k); return true; });
   }
+  // the time it was sent, worked out from "43m ago" and the time now
+  const igAt = ago => { const d = new Date(Date.now() - (ago || 0) * 60000); return keyOf(d) + "T" + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
   async function igRead(file) {
     if (rcBusy) return;
     rcBusy = true; igFound = null; renderIgFound();
     try {
-      const text = await imageToText(file, igStatus);
+      // only the column with the names: the profile pictures (left) and camera icons (right) are cut off first
+      const text = await imageToText(file, igStatus, { cols: [0.2, 0.86], clean: true });
       const names = igParse(text);
-      if (!names.length) { igStatus("Couldn't find account names in that screenshot. You can type them in instead."); igFound = { at: nowLocal(), rows: [{ name: "", on: true }] }; }
+      if (!names.length) { igStatus("Couldn't find account names in that screenshot. You can type them in instead."); igFound = { rows: [{ name: "", on: true, at: nowLocal() }] }; }
       else {
         igStatus("Found " + names.length + (names.length === 1 ? " account" : " accounts") + ". Untick anything that isn't one, fix names if needed, then add.");
         const have = new Map((state.ig || []).map(x => [igNorm(x.account), x]));
-        igFound = { at: nowLocal(), rows: names.map(n => ({ name: n, on: !have.has(igNorm(n)), dup: have.get(igNorm(n)) })) };
+        igFound = { rows: names.map(n => ({ name: n.name, at: igAt(n.ago), guessed: n.ago == null, on: !have.has(igNorm(n.name)), dup: have.get(igNorm(n.name)) })) };
       }
       renderIgFound();
-    } catch { igStatus("That screenshot couldn't be read. You can type the accounts in instead."); igFound = { at: nowLocal(), rows: [{ name: "", on: true }] }; renderIgFound(); }
+    } catch { igStatus("That screenshot couldn't be read. You can type the accounts in instead."); igFound = { rows: [{ name: "", on: true, at: nowLocal() }] }; renderIgFound(); }
     finally { rcBusy = false; }
   }
   function renderIgFound() {
@@ -1326,34 +1346,34 @@
     el.innerHTML = '<div class="ig-found"><ul>' + igFound.rows.map((r, i) =>
       '<li><input type="checkbox" class="round" data-igon="' + i + '"' + (r.on ? " checked" : "") + ' aria-label="Add this account">' +
       '<input type="text" data-igname="' + i + '" value="' + esc(r.name) + '" placeholder="Account name" autocomplete="off" autocapitalize="none" spellcheck="false">' +
+      '<label class="row-at"><span>' + (r.guessed ? "No time shown" : "Sent") + '</span><input type="datetime-local" data-igat="' + i + '" value="' + esc(r.at || nowLocal()) + '"></label>' +
       (r.dup ? '<span class="dup">Already saved, messaged ' + esc(igWhen(r.dup.at)) + '</span>' : "") + '</li>').join("") + '</ul>' +
       '<button type="button" class="linkish" data-igact="more" style="align-self:flex-start">+ Another account</button>' +
-      '<label class="when">Messaged on<input type="datetime-local" id="ig-at" value="' + esc(igFound.at) + '"></label>' +
       '<div class="actions"><button type="button" class="btn" data-igact="add">Add</button><button type="button" class="btn ghost" data-igact="cancel">Cancel</button></div></div>';
   }
   function igReadFound() {
     if (!igFound) return;
     document.querySelectorAll("#ig-found [data-igname]").forEach(inp => { igFound.rows[+inp.dataset.igname].name = inp.value; });
     document.querySelectorAll("#ig-found [data-igon]").forEach(c => { igFound.rows[+c.dataset.igon].on = c.checked; });
-    igFound.at = $("ig-at")?.value || igFound.at;
+    document.querySelectorAll("#ig-found [data-igat]").forEach(c => { igFound.rows[+c.dataset.igat].at = c.value; });
   }
   $("ig-found").addEventListener("click", e => {
     const b = e.target.closest("[data-igact]"); if (!b) return;
     igReadFound();
     const act = b.dataset.igact;
     if (act === "cancel") { igFound = null; igStatus(""); renderIgFound(); return; }
-    if (act === "more") { igFound.rows.push({ name: "", on: true }); renderIgFound(); document.querySelector('#ig-found [data-igname="' + (igFound.rows.length - 1) + '"]')?.focus(); return; }
+    if (act === "more") { igFound.rows.push({ name: "", on: true, at: nowLocal() }); renderIgFound(); document.querySelector('#ig-found [data-igname="' + (igFound.rows.length - 1) + '"]')?.focus(); return; }
     if (act === "add") {
       const rows = igFound.rows.filter(r => r.on && r.name.trim());
       if (!rows.length) return;
       if (!Array.isArray(state.ig)) state.ig = [];
-      state.ig = [...rows.map(r => ({ id: uid(), account: r.name.trim().replace(/^@+/, ""), at: igFound.at || nowLocal(), notes: "", replied: false, partner: false, paid: false })), ...state.ig];
+      state.ig = [...rows.map(r => ({ id: uid(), account: r.name.trim().replace(/^@+/, ""), at: r.at || nowLocal(), notes: "", replied: false, partner: false, paid: false })), ...state.ig];
       igStatus("Added " + rows.length + (rows.length === 1 ? " account." : " accounts."));
       igFound = null; document.activeElement?.blur(); renderIgFound(); commit();
     }
   });
   $("ig-file").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) igRead(f); });
-  $("ig-manual").onclick = () => { igStatus(""); igFound = { at: nowLocal(), rows: [{ name: "", on: true }] }; renderIgFound(); document.querySelector('#ig-found [data-igname="0"]')?.focus(); };
+  $("ig-manual").onclick = () => { igStatus(""); igFound = { rows: [{ name: "", on: true, at: nowLocal() }] }; renderIgFound(); document.querySelector('#ig-found [data-igname="0"]')?.focus(); };
   const igDrop = $("ig-drop");
   igDrop.addEventListener("dragover", e => { e.preventDefault(); igDrop.classList.add("over"); });
   igDrop.addEventListener("dragleave", () => igDrop.classList.remove("over"));
@@ -2391,7 +2411,7 @@
     return new Promise((ok, fail) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = fail; document.head.append(s); });
   }
   let ocrSay = rcStatus;  // where the reading progress is shown (Receipts or IG)
-  async function imageToText(file, say) {
+  async function imageToText(file, say, opts = {}) {
     ocrSay = say || rcStatus;
     if (!window.Tesseract) { ocrSay("Getting the reader ready…"); await loadScript(abs("tess/tesseract.min.js")); }
     if (!ocrWorker) {
@@ -2406,10 +2426,26 @@
     let img = file;
     try {
       const bmp = await createImageBitmap(file);
-      const scale = bmp.width < 1600 ? 2 : 1;
-      if (scale > 1) {
-        const c = document.createElement("canvas"); c.width = bmp.width * scale; c.height = bmp.height * scale;
-        const g = c.getContext("2d"); g.imageSmoothingQuality = "high"; g.drawImage(bmp, 0, 0, c.width, c.height);
+      // opts.cols = [from, to] as parts of the width: read only that column (the names, not the pictures or icons)
+      const [c0, c1] = opts.cols || [0, 1];
+      const sx = Math.round(bmp.width * c0), sw = Math.round(bmp.width * (c1 - c0));
+      const scale = sw < 1600 ? 2 : 1;
+      if (scale > 1 || opts.cols || opts.clean) {
+        const c = document.createElement("canvas"); c.width = sw * scale; c.height = bmp.height * scale;
+        const g = c.getContext("2d"); g.imageSmoothingQuality = "high"; g.drawImage(bmp, sx, 0, sw, bmp.height, 0, 0, c.width, c.height);
+        if (opts.clean) {
+          // grey, dark mode turned into dark text on white, and the contrast stretched so light grey text reads too
+          const im = g.getImageData(0, 0, c.width, c.height), d = im.data;
+          let sum = 0; for (let i = 0; i < d.length; i += 40) sum += d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
+          const dark = sum / (d.length / 40) < 110;
+          for (let i = 0; i < d.length; i += 4) {
+            let v = d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
+            if (dark) v = 255 - v;
+            v = v > 200 ? 255 : Math.max(0, (v - 40) * 1.6);
+            d[i] = d[i + 1] = d[i + 2] = v;
+          }
+          g.putImageData(im, 0, 0);
+        }
         img = await new Promise(r => c.toBlob(r, "image/png")) || file;
       }
     } catch {}
