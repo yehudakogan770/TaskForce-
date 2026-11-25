@@ -356,11 +356,11 @@
   footer button { font: inherit; color: var(--c2); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 
   /* page tabs */
-  .tabs { position: relative; background: var(--c5); flex: none; display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--accent);
+  .tabs { position: relative; background: var(--c5); flex: none; display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--accent);
     margin-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
   /* the moving block carries its own copy of the labels, shifted the other way, so every label reads right even halfway through a swipe */
-  .tab-ind { position: absolute; inset: 0 auto 0 0; width: calc(100% / 3); background: var(--accent); overflow: hidden; z-index: 1; pointer-events: none; will-change: transform; }
-  .tab-ind-labels { display: grid; grid-template-columns: repeat(3, 1fr); width: 300%; height: 100%; align-items: center; text-align: center;
+  .tab-ind { position: absolute; inset: 0 auto 0 0; width: calc(100% / 4); background: var(--accent); overflow: hidden; z-index: 1; pointer-events: none; will-change: transform; }
+  .tab-ind-labels { display: grid; grid-template-columns: repeat(4, 1fr); width: 400%; height: 100%; align-items: center; text-align: center;
     font-size: 13.5px; font-weight: 600; color: var(--on-accent); will-change: transform; }
   .tab { position: relative; font: inherit; font-size: 13.5px; font-weight: 600; padding: 9px; border: 0; background: transparent; color: var(--c1); cursor: pointer; }
   .pager { flex: 1; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory;
@@ -408,6 +408,41 @@
   .inv-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--c2); }
   .inv-form label.tick { flex-direction: row; align-items: center; gap: 8px; font-size: 13.5px; color: var(--c1); }
   .inv-form label.tick input { width: 18px; height: 18px; accent-color: var(--accent); }
+  /* Instagram outreach */
+  .ig-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .ig-stats div { background: var(--c4); padding: 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+  .ig-stats span { font-size: 11.5px; color: var(--c2); }
+  .ig-stats strong { font-size: 18px; font-variant-numeric: tabular-nums; }
+  .ig-stats em { font-style: normal; font-size: 11.5px; color: var(--warm-text); font-weight: 600; }
+  .ig-stats em:empty { display: none; }
+  .ig-filter { display: flex; margin-bottom: 8px; }
+  .ig-filter button { flex: 1; padding: 0 4px; font-size: 12.5px; }
+  .ig-found { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding: 12px; border: 1px solid var(--c4); }
+  .ig-found ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .ig-found li { display: grid; grid-template-columns: 28px 1fr; align-items: center; gap: 6px; }
+  .ig-found li input[type="text"] { width: 100%; height: 40px !important; }
+  .ig-found .dup { grid-column: 2; font-size: 11.5px; color: var(--c3); margin-top: -4px; }
+  .ig-found .when { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; }
+  .ig-found .when input { width: 210px !important; flex: none; }
+  .round { -webkit-appearance: none; appearance: none; flex: none; width: 20px; height: 20px; margin: 0; border: 1.5px solid var(--c3); border-radius: 50%; background: var(--c5); cursor: pointer; }
+  .round:checked { background: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 0 3px var(--c5); }
+  .ig-list { list-style: none; margin: 0; padding: 0; }
+  .ig-item { border-bottom: 1px solid var(--c4); padding: 10px 0; }
+  .ig-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+  .ig-name { font: inherit; text-align: left; padding: 0; border: 0; background: none; color: var(--c1); cursor: pointer; min-width: 0; }
+  .ig-name b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ig-name span { font-size: 12.5px; color: var(--c3); }
+  .ig-name .note { display: block; color: var(--c2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ig-ticks { display: flex; gap: 10px; }
+  .ig-ticks label { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: var(--c3); cursor: pointer; }
+  .ig-ticks .amt { color: var(--warm-text); font-weight: 600; }
+  .ig-edit { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .ig-edit label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--c2); min-width: 0; }
+  .ig-edit .full { grid-column: 1 / -1; }
+  .ig-edit textarea { font: inherit; font-size: 16px; color: var(--c1); background: var(--c5); border: 1px solid var(--c3); padding: 10px 12px; min-height: 80px; resize: vertical; }
+  .ig-edit .actions { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; }
+  .ig-empty { color: var(--c3); padding: 12px 0; }
+  @media (max-width: 460px) { .ig-stats strong { font-size: 16px; } .ig-stats div { padding: 8px 4px; } .ig-found .when { flex-direction: column; align-items: stretch; } .ig-found .when input { width: 100% !important; } }
   .rep-seg { display: flex; }
   .rep-seg button { flex: 1; }
   .rep-count { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; margin-top: 8px; font-size: 13.5px; color: var(--c1); }
@@ -523,7 +558,7 @@
   @media (orientation: landscape) and (min-width: 640px) {
     .app { max-width: 1100px; }
     .tabs { width: calc(100% - 32px); max-width: 600px; margin-inline: auto; }
-    #page-reminders, #page-receipts { padding-inline: max(16px, calc((100% - 600px) / 2)); }
+    #page-reminders, #page-receipts, #page-ig { padding-inline: max(16px, calc((100% - 600px) / 2)); }
     /* left: owed to me, right: I owe */
     .money-cols { flex-direction: row-reverse; gap: 40px; align-items: flex-start; }
     .money-col { flex: 1 1 0; }
@@ -572,10 +607,11 @@
 <body>
 <div class="app">
   <div class="tabs" role="tablist" aria-label="Pages">
-    <span class="tab-ind" id="tab-ind" aria-hidden="true"><span class="tab-ind-labels" id="tab-ind-labels"><span>Reminders</span><span>Money</span><span>Receipts</span></span></span>
+    <span class="tab-ind" id="tab-ind" aria-hidden="true"><span class="tab-ind-labels" id="tab-ind-labels"><span>Reminders</span><span>Money</span><span>Receipts</span><span>IG</span></span></span>
     <button class="tab" type="button" role="tab" id="tab-reminders" aria-selected="true" aria-controls="page-reminders">Reminders</button>
     <button class="tab" type="button" role="tab" id="tab-owe" aria-selected="false" aria-controls="page-owe">Money</button>
     <button class="tab" type="button" role="tab" id="tab-receipts" aria-selected="false" aria-controls="page-receipts">Receipts</button>
+    <button class="tab" type="button" role="tab" id="tab-ig" aria-selected="false" aria-controls="page-ig">IG</button>
   </div>
 
   <div class="pager" id="pager">
@@ -736,6 +772,49 @@
     <div class="data-links"><button type="button" data-backup>Back up</button><button type="button" data-restore>Restore</button></div>
     </footer>
   </div>
+
+  <div class="page" id="page-ig" role="tabpanel" aria-labelledby="tab-ig">
+    <header>
+      <h1>Instagram</h1>
+    </header>
+
+    <section aria-label="Totals">
+      <div class="ig-stats">
+        <div><span>Messaged</span><strong id="ig-n-sent">0</strong></div>
+        <div><span>Replied</span><strong id="ig-n-replied">0</strong></div>
+        <div><span>Partnerships</span><strong id="ig-n-partner">0</strong></div>
+        <div><span>Paid</span><strong id="ig-n-paid">0</strong><em id="ig-paid-total"></em></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="ig-add-title">
+      <h2 id="ig-add-title">Add accounts</h2>
+      <div class="drop" id="ig-drop">
+        <p>Choose or paste a screenshot of your messages list. The account names get read for you, and you pick which ones to save.</p>
+        <label class="btn">Choose screenshot<input type="file" id="ig-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+        <button type="button" class="linkish" id="ig-manual">Or type an account in</button>
+      </div>
+      <p class="rc-status" id="ig-status" role="status" hidden></p>
+      <div id="ig-found"></div>
+    </section>
+
+    <section aria-labelledby="ig-list-title">
+      <h2 id="ig-list-title">Accounts</h2>
+      <div class="seg2 ig-filter" role="group" aria-label="Show">
+        <button type="button" data-igf="all" aria-pressed="true">All</button>
+        <button type="button" data-igf="waiting" aria-pressed="false">Waiting</button>
+        <button type="button" data-igf="replied" aria-pressed="false">Replied</button>
+        <button type="button" data-igf="partner" aria-pressed="false">Partners</button>
+        <button type="button" data-igf="paid" aria-pressed="false">Paid</button>
+      </div>
+      <ul class="ig-list" id="ig-list"></ul>
+    </section>
+
+    <footer>
+      <span id="ig-sync-status">Saved on this device</span>
+    <div class="data-links"><button type="button" data-backup>Back up</button><button type="button" data-restore>Restore</button></div>
+    </footer>
+  </div>
   </div>
 </div>
 
@@ -798,7 +877,8 @@
     items: [{ name: "USB-C charging cable, 6 ft (2-pack)", qty: 1, price: 12.99 }, { name: "Spiral notebook, college ruled", qty: 3, price: 4.49 }],
     subtotal: 26.46, shipping: 0, tax: 2.35, total: 28.81, sample: true,
   }];
-  const blank = () => ({ reminders: SAMPLE_REMINDERS, prefs: {}, debts: SAMPLE_DEBTS, receipts: SAMPLE_RECEIPTS, debtCats: [] });
+  // ig: { id, account, at ("YYYY-MM-DDTHH:MM" when messaged), notes, replied, partner, paid, amount? }
+  const blank = () => ({ reminders: SAMPLE_REMINDERS, prefs: {}, debts: SAMPLE_DEBTS, receipts: SAMPLE_RECEIPTS, debtCats: [], ig: [] });
   const normalize = ({ fitness, ...s }) => ({ ...blank(), ...s, reminders: Array.isArray(s.reminders) ? s.reminders : SAMPLE_REMINDERS, debtCats: (Array.isArray(s.debtCats) ? s.debtCats : []).map(c => typeof c === "string" ? { name: c, subs: [] } : { name: c.name, subs: c.subs || [] }) });
   let state = blank();
   try { const saved = JSON.parse(localStorage.getItem(LS_KEY)); if (saved && typeof saved === "object") state = normalize(saved); } catch {}
@@ -844,6 +924,7 @@
     renderReminders();
     renderOwe();
     renderReceipts();
+    renderIg();
   }
 
   const byTime = (a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || (a.time || "99").localeCompare(b.time || "99");
@@ -1200,8 +1281,138 @@
     alertBar("Sent " + items.length + (items.length === 1 ? " item" : " items") + " to your Calendar. Choose Calendar (or Add All) on your phone to finish.");
   };
 
+  // ---- Instagram outreach: accounts messaged, and whether they replied, partnered and paid
+  let igFilter = "all", igOpenId = null, igDelArmed = false, igFound = null;
+  const igNorm = a => String(a || "").trim().replace(/^@+/, "").toLowerCase();
+  const nowLocal = () => { const d = new Date(); return keyOf(d) + "T" + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
+  const igWhen = at => { if (!at) return ""; const [k, t] = at.split("T"); return shortDate(k) + (t ? " · " + fmt(t) : ""); };
+  function igStatus(text) { const el = $("ig-status"); el.hidden = !text; el.textContent = text || ""; }
+
+  // a messages list reads as: name, then a preview line ("You: hi · 2h", "Sent 3h ago", "Seen", "Active 5m ago")
+  const IG_SKIP = /^(messages|message|requests?|primary|general|search|ask meta ai.*|your note|notes?|channels|hidden requests|edit|new message|active now|today|yesterday|send message|camera|chats?|unread|see all|following|followers|home|reels|profile|instagram)$/i;
+  const IG_PREVIEW = /(^you:|^you sent|^sent\b|^seen\b|^active\b|^liked\b|^reacted\b|^replied\b|^mentioned\b|^sent you|^shared\b|^typing|\bago\b|·|•|\b\d+\s?[smhdw]\b|\b\d+\s?(min|mins|hr|hrs|wk|wks)\b|^\d+ new messages?|^new message)/i;
+  function igParse(text) {
+    const lines = text.split(/\n/).map(l => l.replace(/^[^A-Za-z0-9@._]+/, "").replace(/[^A-Za-z0-9._)\]]+$/, "").trim()).filter(Boolean);
+    const out = [];
+    const ok = l => l.length >= 2 && l.length <= 40 && l.split(/\s+/).length <= 4 && !IG_SKIP.test(l) && !IG_PREVIEW.test(l) && /[A-Za-z]/.test(l) && !/^\d/.test(l);
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i], next = lines[i + 1] || "";
+      if (ok(l) && IG_PREVIEW.test(next)) out.push(l);
+    }
+    // nothing in that shape: fall back to anything that looks like a username
+    if (!out.length) for (const l of lines) if (/^@?[a-z0-9._]{3,30}$/i.test(l) && /[._\d]|^@/.test(l) && !IG_SKIP.test(l)) out.push(l);
+    const seen = new Set();
+    return out.map(a => a.replace(/^@/, "")).filter(a => { const k = igNorm(a); if (seen.has(k)) return false; seen.add(k); return true; });
+  }
+  async function igRead(file) {
+    if (rcBusy) return;
+    rcBusy = true; igFound = null; renderIgFound();
+    try {
+      const text = await imageToText(file, igStatus);
+      const names = igParse(text);
+      if (!names.length) { igStatus("Couldn't find account names in that screenshot. You can type them in instead."); igFound = { at: nowLocal(), rows: [{ name: "", on: true }] }; }
+      else {
+        igStatus("Found " + names.length + (names.length === 1 ? " account" : " accounts") + ". Untick anything that isn't one, fix names if needed, then add.");
+        const have = new Map((state.ig || []).map(x => [igNorm(x.account), x]));
+        igFound = { at: nowLocal(), rows: names.map(n => ({ name: n, on: !have.has(igNorm(n)), dup: have.get(igNorm(n)) })) };
+      }
+      renderIgFound();
+    } catch { igStatus("That screenshot couldn't be read. You can type the accounts in instead."); igFound = { at: nowLocal(), rows: [{ name: "", on: true }] }; renderIgFound(); }
+    finally { rcBusy = false; }
+  }
+  function renderIgFound() {
+    const el = $("ig-found");
+    if (!igFound) { el.innerHTML = ""; return; }
+    el.innerHTML = '<div class="ig-found"><ul>' + igFound.rows.map((r, i) =>
+      '<li><input type="checkbox" class="round" data-igon="' + i + '"' + (r.on ? " checked" : "") + ' aria-label="Add this account">' +
+      '<input type="text" data-igname="' + i + '" value="' + esc(r.name) + '" placeholder="Account name" autocomplete="off" autocapitalize="none" spellcheck="false">' +
+      (r.dup ? '<span class="dup">Already saved, messaged ' + esc(igWhen(r.dup.at)) + '</span>' : "") + '</li>').join("") + '</ul>' +
+      '<button type="button" class="linkish" data-igact="more" style="align-self:flex-start">+ Another account</button>' +
+      '<label class="when">Messaged on<input type="datetime-local" id="ig-at" value="' + esc(igFound.at) + '"></label>' +
+      '<div class="actions"><button type="button" class="btn" data-igact="add">Add</button><button type="button" class="btn ghost" data-igact="cancel">Cancel</button></div></div>';
+  }
+  function igReadFound() {
+    if (!igFound) return;
+    document.querySelectorAll("#ig-found [data-igname]").forEach(inp => { igFound.rows[+inp.dataset.igname].name = inp.value; });
+    document.querySelectorAll("#ig-found [data-igon]").forEach(c => { igFound.rows[+c.dataset.igon].on = c.checked; });
+    igFound.at = $("ig-at")?.value || igFound.at;
+  }
+  $("ig-found").addEventListener("click", e => {
+    const b = e.target.closest("[data-igact]"); if (!b) return;
+    igReadFound();
+    const act = b.dataset.igact;
+    if (act === "cancel") { igFound = null; igStatus(""); renderIgFound(); return; }
+    if (act === "more") { igFound.rows.push({ name: "", on: true }); renderIgFound(); document.querySelector('#ig-found [data-igname="' + (igFound.rows.length - 1) + '"]')?.focus(); return; }
+    if (act === "add") {
+      const rows = igFound.rows.filter(r => r.on && r.name.trim());
+      if (!rows.length) return;
+      if (!Array.isArray(state.ig)) state.ig = [];
+      state.ig = [...rows.map(r => ({ id: uid(), account: r.name.trim().replace(/^@+/, ""), at: igFound.at || nowLocal(), notes: "", replied: false, partner: false, paid: false })), ...state.ig];
+      igStatus("Added " + rows.length + (rows.length === 1 ? " account." : " accounts."));
+      igFound = null; document.activeElement?.blur(); renderIgFound(); commit();
+    }
+  });
+  $("ig-file").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) igRead(f); });
+  $("ig-manual").onclick = () => { igStatus(""); igFound = { at: nowLocal(), rows: [{ name: "", on: true }] }; renderIgFound(); document.querySelector('#ig-found [data-igname="0"]')?.focus(); };
+  const igDrop = $("ig-drop");
+  igDrop.addEventListener("dragover", e => { e.preventDefault(); igDrop.classList.add("over"); });
+  igDrop.addEventListener("dragleave", () => igDrop.classList.remove("over"));
+  igDrop.addEventListener("drop", e => { e.preventDefault(); igDrop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith("image/")) igRead(f); });
+
+  function renderIg() {
+    const list = Array.isArray(state.ig) ? state.ig : [];
+    const paid = list.filter(x => x.paid), earned = paid.reduce((a, x) => a + (num(x.amount) || 0), 0);
+    $("ig-n-sent").textContent = list.length;
+    $("ig-n-replied").textContent = list.filter(x => x.replied).length;
+    $("ig-n-partner").textContent = list.filter(x => x.partner).length;
+    $("ig-n-paid").textContent = paid.length;
+    $("ig-paid-total").textContent = earned ? money(earned) : "";
+    document.querySelectorAll("[data-igf]").forEach(b => b.setAttribute("aria-pressed", b.dataset.igf === igFilter));
+    const shown = list.filter(x => igFilter === "all" || (igFilter === "waiting" ? !x.replied : x[igFilter]))
+      .sort((a, b) => (b.at || "").localeCompare(a.at || ""));
+    const tick = (x, k, label) => '<label><input type="checkbox" class="round" data-igtick="' + k + '"' + (x[k] ? " checked" : "") + '>' + label + '</label>';
+    $("ig-list").innerHTML = shown.length ? shown.map(x => '<li class="ig-item" data-id="' + x.id + '"><div class="ig-row">' +
+      '<button type="button" class="ig-name" data-igopen><b>' + esc((/\s/.test(x.account) ? "" : "@") + x.account) + '</b><span>' + esc(igWhen(x.at)) + '</span>' +
+        (x.notes ? '<span class="note">' + esc(x.notes) + '</span>' : "") + '</button>' +
+      '<div class="ig-ticks">' + tick(x, "replied", "Replied") + tick(x, "partner", "Partner") +
+        '<label><input type="checkbox" class="round" data-igtick="paid"' + (x.paid ? " checked" : "") + '>' + (x.paid && num(x.amount) ? '<span class="amt">' + money(num(x.amount)) + '</span>' : "Paid") + '</label></div></div>' +
+      (igOpenId === x.id ? '<div class="ig-edit">' +
+        '<label>Account<input type="text" data-igf2="account" value="' + esc(x.account) + '" autocapitalize="none" spellcheck="false"></label>' +
+        '<label>Messaged on<input type="datetime-local" data-igf2="at" value="' + esc(x.at || "") + '"></label>' +
+        '<label class="full">Notes<textarea data-igf2="notes" placeholder="Anything to remember">' + esc(x.notes || "") + '</textarea></label>' +
+        '<label>Amount paid (optional)<input type="number" data-igf2="amount" min="0" step="0.01" inputmode="decimal" value="' + (x.amount ?? "") + '"></label><span></span>' +
+        '<div class="actions"><button type="button" class="btn" data-igsave>Save</button><button type="button" class="btn ghost" data-igclose>Close</button>' +
+        '<button type="button" class="btn ghost" data-igdel>' + (igDelArmed ? "Tap again to delete" : "Delete") + '</button></div></div>' : "") +
+    '</li>').join("") : '<li class="ig-empty">' + (list.length ? "None here." : "No accounts yet. Add a screenshot of your messages above.") + '</li>';
+  }
+  document.querySelector(".ig-filter").addEventListener("click", e => { const b = e.target.closest("[data-igf]"); if (b) { igFilter = b.dataset.igf; renderIg(); } });
+  $("ig-list").addEventListener("change", e => {
+    const t = e.target.closest("[data-igtick]"); if (!t) return;
+    const x = state.ig.find(y => y.id === t.closest("[data-id]").dataset.id); if (!x) return;
+    x[t.dataset.igtick] = t.checked;
+    // ticking Paid opens the entry so an amount can be added
+    if (t.dataset.igtick === "paid" && t.checked && x.amount == null) igOpenId = x.id;
+    commit();
+  });
+  $("ig-list").addEventListener("click", e => {
+    const li = e.target.closest("[data-id]"); if (!li) return;
+    const x = state.ig.find(y => y.id === li.dataset.id); if (!x) return;
+    if (e.target.closest("[data-igopen]")) { igOpenId = igOpenId === x.id ? null : x.id; igDelArmed = false; renderIg(); return; }
+    if (e.target.closest("[data-igclose]")) { igOpenId = null; igDelArmed = false; renderIg(); return; }
+    if (e.target.closest("[data-igsave]")) {
+      const v = k => li.querySelector('[data-igf2="' + k + '"]').value;
+      x.account = v("account").trim().replace(/^@+/, "") || x.account; x.at = v("at") || x.at; x.notes = v("notes").trim();
+      const a = num(v("amount")); if (a > 0) x.amount = a; else delete x.amount;
+      igOpenId = null; document.activeElement?.blur(); commit(); return;
+    }
+    if (e.target.closest("[data-igdel]")) {
+      if (!igDelArmed) { igDelArmed = true; e.target.closest("[data-igdel]").textContent = "Tap again to delete"; return; }
+      state.ig = state.ig.filter(y => y.id !== x.id); igOpenId = null; igDelArmed = false; commit();
+    }
+  });
+
   // ---- pages
-  const PAGES = ["reminders", "owe", "receipts"];
+  const PAGES = ["reminders", "owe", "receipts", "ig"];
   const pager = $("pager");
   let currentPage = "reminders";
   function setCurrent(i) {
@@ -2179,14 +2390,16 @@
   function loadScript(src) {
     return new Promise((ok, fail) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = fail; document.head.append(s); });
   }
-  async function imageToText(file) {
-    if (!window.Tesseract) { rcStatus("Getting the reader ready…"); await loadScript(abs("tess/tesseract.min.js")); }
+  let ocrSay = rcStatus;  // where the reading progress is shown (Receipts or IG)
+  async function imageToText(file, say) {
+    ocrSay = say || rcStatus;
+    if (!window.Tesseract) { ocrSay("Getting the reader ready…"); await loadScript(abs("tess/tesseract.min.js")); }
     if (!ocrWorker) {
-      rcStatus("Getting the reader ready (only slow the first time)…");
+      ocrSay("Getting the reader ready (only slow the first time)…");
       ocrWorker = await Tesseract.createWorker("eng", 1, {
         workerPath: abs("tess/ocr-worker.js"), corePath: abs("tess/core"), langPath: abs("tess/lang"),
         workerBlobURL: false, cacheMethod: "none",
-        logger: m => { if (m.status === "recognizing text") rcStatus("Reading the screenshot… " + Math.round(m.progress * 100) + "%"); },
+        logger: m => { if (m.status === "recognizing text") ocrSay("Reading the screenshot… " + Math.round(m.progress * 100) + "%"); },
       });
     }
     // small screenshots read better when enlarged
@@ -2233,6 +2446,7 @@
     const t = e.target;
     if (t && t.id !== "rc-text" && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
     const f = [...(e.clipboardData?.files || [])].find(x => x.type.startsWith("image/"));
+    if (f && currentPage === "ig") { e.preventDefault(); igRead(f); return; }
     const text = (e.clipboardData?.getData("text/plain") || "").trim();
     if (!f && text.length < 20) return;
     e.preventDefault();
@@ -2311,7 +2525,7 @@
     try { data = JSON.parse(await file.text()); } catch { alertBar("That file isn't a TaskForce backup."); return; }
     const saved = data && data.app === "TaskForce" && data.state;
     if (!saved || typeof saved !== "object") { alertBar("That file isn't a TaskForce backup."); return; }
-    const hasEntries = state.reminders.some(r => !r.sample) || state.debts.some(d => !d.sample) || state.receipts.some(r => !r.sample);
+    const hasEntries = state.reminders.some(r => !r.sample) || state.debts.some(d => !d.sample) || state.receipts.some(r => !r.sample) || (state.ig || []).length > 0;
     if (hasEntries && restoreArmed !== file.name) {
       restoreArmed = file.name;
       alertBar("Restoring replaces what's in the app now. Choose the file again to confirm.");
@@ -2332,14 +2546,14 @@
   });
   $("restore-file").addEventListener("change", e => { const f = e.target.files[0]; if (f) restoreFrom(f); });
 
-  function setSync(t) { ["sync-status", "owe-sync-status", "rc-sync-status"].forEach(id => { $(id).textContent = t; }); }
+  function setSync(t) { ["sync-status", "owe-sync-status", "rc-sync-status", "ig-sync-status"].forEach(id => { $(id).textContent = t; }); }
   async function pushRemote() {
     try { await remote.set(JSON.parse(JSON.stringify(state))); setSync("Saved to your account"); }
     catch { setSync("Saved on this device only"); }
   }
 
   prune(); saveLocal(); renderSoundBtn(); render();
-  setInterval(() => { checkReminders(); if (!sheetDate && !remEditId && !remOpenId && !remAdd && !oweEditId && !refundOpenId && !addAmtId && !invoiceId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
+  setInterval(() => { checkReminders(); if (!sheetDate && !remEditId && !remOpenId && !remAdd && !oweEditId && !refundOpenId && !addAmtId && !invoiceId && !igOpenId) render(); else { $("clock").textContent = fmt(toHHMM(nowMinutes())); } }, 30000);
 
   (async () => {
     if (!window.claude || !window.claude.use) return;
