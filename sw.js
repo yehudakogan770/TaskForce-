@@ -1,6 +1,6 @@
 // Makes the app open instantly: the page comes from the copy saved on the phone, and a newer version is
 // fetched in the background (the app offers to switch to it). Everything else is cached on first use.
-const CACHE = "checklist-v45";
+const CACHE = "checklist-v46";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png",
   "fonts/petrona-latin-400-normal.woff2", "fonts/petrona-latin-600-normal.woff2", "fonts/petrona-latin-700-normal.woff2"];
 

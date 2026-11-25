@@ -431,6 +431,11 @@
   .ig-list { list-style: none; margin: 0; padding: 0; }
   .ig-item { border-bottom: 1px solid var(--c4); padding: 10px 0; }
   .ig-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+  .ig-row.has-pic { grid-template-columns: 40px 1fr auto; gap: 10px; }
+  .ig-pic { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--c4); flex: none; }
+  .ig-namebox { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .ig-namebox input { flex: 1; min-width: 0; }
+  .ig-namebox .ig-pic { width: 36px; height: 36px; }
   .ig-name { font: inherit; text-align: left; padding: 0; border: 0; background: none; color: var(--c1); cursor: pointer; min-width: 0; }
   .ig-name b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ig-name span { font-size: 12.5px; color: var(--c3); }
@@ -1317,15 +1322,19 @@
   function igClean(l) {
     let t = l.replace(/[…]+|\.{3,}$/g, "").replace(/^[^A-Za-z0-9@]+/, "").trim();
     for (let i = 0; i < 3; i++) t = t.replace(/\s+(\S{1,2}|[^A-Za-z0-9\s]+)$/, "").trim();
-    return t.replace(/[^A-Za-z0-9._)\]!]+$/, "").trim();
+    return t.replace(/[^A-Za-z0-9._)\]!|]+$/, "").trim();
   }
-  function igParse(text) {
-    const lines = text.split(/\n/).map(l => l.trim()).filter(Boolean);
+  // rows: plain lines of text, or { t, y0, y1 } with where each sits, so the profile picture beside it can be cut out
+  function igParse(text, rows) {
+    const L = rows && rows.length ? rows : text.split(/\n/).map(t => ({ t: t.trim() })).filter(r => r.t);
+    const lines = L.map(r => r.t);
     const out = [];
     const ok = l => l.length >= 2 && l.length <= 60 && !IG_SKIP.test(l) && !IG_PREVIEW.test(l) && /[A-Za-z]{2}/.test(l) && !/^\d/.test(l);
     for (let i = 0; i < lines.length; i++) {
       const name = igClean(lines[i]), next = lines[i + 1] || "";
-      if (ok(name) && (IG_PREVIEW.test(next) || /^(seen|delivered)\b/i.test(next))) { out.push({ name, ago: igAgo(next) }); i++; }
+      if (ok(name) && (IG_PREVIEW.test(next) || /^(seen|delivered)\b/i.test(next))) {
+        out.push({ name, ago: igAgo(next), y: L[i].y0 != null && L[i + 1] ? (L[i].y0 + L[i + 1].y1) / 2 : null }); i++;
+      }
     }
     // nothing in that shape: fall back to anything that looks like a username
     if (!out.length) for (const l of lines.map(igClean)) if (/^@?[a-z0-9._]{3,30}$/i.test(l) && /[._\d]|^@/.test(l) && !IG_SKIP.test(l)) out.push({ name: l, ago: null });
@@ -1339,13 +1348,26 @@
     rcBusy = true; igFound = null; renderIgFound();
     try {
       // only the column with the names: the profile pictures (left) and camera icons (right) are cut off first
-      const text = await imageToText(file, igStatus, { cols: [0.2, 0.86], clean: true });
-      const names = igParse(text);
+      const opts = { cols: [0.2, 0.86], clean: true, lines: true };
+      const text = await imageToText(file, igStatus, opts);
+      const names = igParse(text, opts.out && opts.out.lines);
+      // the profile picture sits left of each name: a circle about 15% of the width across, centred on the row
+      if (opts.out && opts.out.bmp) {
+        const bmp = opts.out.bmp, W = bmp.width, D = W * 0.15, cx = W * 0.117;
+        for (const n of names) {
+          if (n.y == null) continue;
+          try {
+            const c = document.createElement("canvas"); c.width = c.height = 80;
+            c.getContext("2d").drawImage(bmp, cx - D / 2, n.y - D / 2, D, D, 0, 0, 80, 80);
+            n.pic = c.toDataURL("image/jpeg", 0.8);
+          } catch {}
+        }
+      }
       if (!names.length) { igStatus("Couldn't find account names in that screenshot. You can type them in instead."); igFound = { rows: [{ name: "", on: true, at: nowLocal() }] }; }
       else {
         igStatus("Found " + names.length + (names.length === 1 ? " account" : " accounts") + ". Untick anything that isn't one, fix names if needed, then add.");
         const have = new Map((state.ig || []).map(x => [igNorm(x.account), x]));
-        igFound = { rows: names.map(n => ({ name: n.name, at: igAt(n.ago), guessed: n.ago == null, on: !have.has(igNorm(n.name)), dup: have.get(igNorm(n.name)) })) };
+        igFound = { rows: names.map(n => ({ name: n.name, pic: n.pic, at: igAt(n.ago), guessed: n.ago == null, on: !have.has(igNorm(n.name)), dup: have.get(igNorm(n.name)) })) };
       }
       renderIgFound();
     } catch { igStatus("That screenshot couldn't be read. You can type the accounts in instead."); igFound = { rows: [{ name: "", on: true, at: nowLocal() }] }; renderIgFound(); }
@@ -1356,7 +1378,7 @@
     if (!igFound) { el.innerHTML = ""; return; }
     el.innerHTML = '<div class="ig-found"><ul>' + igFound.rows.map((r, i) =>
       '<li><input type="checkbox" class="round" data-igon="' + i + '"' + (r.on ? " checked" : "") + ' aria-label="Add this account">' +
-      '<input type="text" data-igname="' + i + '" value="' + esc(r.name) + '" placeholder="Account name" autocomplete="off" autocapitalize="none" spellcheck="false">' +
+      '<div class="ig-namebox">' + (r.pic ? '<img class="ig-pic" src="' + r.pic + '" alt="">' : "") + '<input type="text" data-igname="' + i + '" value="' + esc(r.name) + '" placeholder="Account name" autocomplete="off" autocapitalize="none" spellcheck="false"></div>' +
       '<label class="row-at"><span>' + (r.guessed ? "No time shown" : "Sent") + '</span><input type="datetime-local" data-igat="' + i + '" value="' + esc(r.at || nowLocal()) + '"></label>' +
       (r.dup ? '<span class="dup">Already saved, messaged ' + esc(igWhen(r.dup.at)) + '</span>' : "") + '</li>').join("") + '</ul>' +
       '<button type="button" class="linkish" data-igact="more" style="align-self:flex-start">+ Another account</button>' +
@@ -1378,7 +1400,7 @@
       const rows = igFound.rows.filter(r => r.on && r.name.trim());
       if (!rows.length) return;
       if (!Array.isArray(state.ig)) state.ig = [];
-      state.ig = [...rows.map(r => ({ id: uid(), account: r.name.trim().replace(/^@+/, ""), at: r.at || nowLocal(), notes: "", replied: false, partner: false, paid: false })), ...state.ig];
+      state.ig = [...rows.map(r => ({ id: uid(), account: r.name.trim().replace(/^@+/, ""), at: r.at || nowLocal(), ...(r.pic ? { pic: r.pic } : {}), notes: "", replied: false, partner: false, paid: false })), ...state.ig];
       igStatus("Added " + rows.length + (rows.length === 1 ? " account." : " accounts."));
       igFound = null; document.activeElement?.blur(); renderIgFound(); commit();
     }
@@ -1402,7 +1424,7 @@
     const shown = list.filter(x => igFilter === "all" || (igFilter === "waiting" ? !igReplied(x) : igFilter === "replied" ? igReplied(x) : x[igFilter]))
       .sort((a, b) => (b.at || "").localeCompare(a.at || ""));
     const tick = (x, k, label) => '<label><input type="checkbox" class="round" data-igtick="' + k + '"' + (x[k] ? " checked" : "") + '>' + label + '</label>';
-    $("ig-list").innerHTML = shown.length ? shown.map(x => '<li class="ig-item" data-id="' + x.id + '"><div class="ig-row">' +
+    $("ig-list").innerHTML = shown.length ? shown.map(x => '<li class="ig-item" data-id="' + x.id + '"><div class="ig-row' + (x.pic ? " has-pic" : "") + '">' + (x.pic ? '<img class="ig-pic" src="' + x.pic + '" alt="">' : "") +
       '<button type="button" class="ig-name" data-igopen><b>' + esc((/\s/.test(x.account) ? "" : "@") + x.account) + '</b><span>' + esc(igWhen(x.at)) + '</span>' +
         (igReplied(x) ? '<span class="note reply-line">' + esc(igReplyText(x)) + '</span>' : "") +
         (x.notes ? '<span class="note">' + esc(x.notes) + '</span>' : "") + '</button>' +
@@ -2457,27 +2479,33 @@
       // opts.cols = [from, to] as parts of the width: read only that column (the names, not the pictures or icons)
       const [c0, c1] = opts.cols || [0, 1];
       const sx = Math.round(bmp.width * c0), sw = Math.round(bmp.width * (c1 - c0));
-      const scale = sw < 1600 ? 2 : 1;
+      // the names read best at about 1300px wide (tested on real Instagram screenshots); receipts keep doubling small images
+      const scale = opts.cols ? Math.min(3, Math.max(1, 1300 / sw)) : sw < 1600 ? 2 : 1;
       if (scale > 1 || opts.cols || opts.clean) {
-        const c = document.createElement("canvas"); c.width = sw * scale; c.height = bmp.height * scale;
+        const c = document.createElement("canvas"); c.width = Math.round(sw * scale); c.height = Math.round(bmp.height * scale);
         const g = c.getContext("2d"); g.imageSmoothingQuality = "high"; g.drawImage(bmp, sx, 0, sw, bmp.height, 0, 0, c.width, c.height);
         if (opts.clean) {
-          // grey, dark mode turned into dark text on white, and the contrast stretched so light grey text reads too
+          // grey, with dark mode turned into dark text on white
           const im = g.getImageData(0, 0, c.width, c.height), d = im.data;
           let sum = 0; for (let i = 0; i < d.length; i += 40) sum += d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
           const dark = sum / (d.length / 40) < 110;
           for (let i = 0; i < d.length; i += 4) {
             let v = d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
             if (dark) v = 255 - v;
-            v = v > 200 ? 255 : Math.max(0, (v - 40) * 1.6);
             d[i] = d[i + 1] = d[i + 2] = v;
           }
           g.putImageData(im, 0, 0);
         }
         img = await new Promise(r => c.toBlob(r, "image/png")) || file;
       }
+      if (opts.lines) opts.out = { bmp, scale };
     } catch {}
     const { data } = await ocrWorker.recognize(img);
+    if (opts.lines && opts.out) {
+      // each line of text with where it sits in the original screenshot (top and bottom, in pixels)
+      const sc = opts.out.scale || 1;
+      opts.out.lines = (data.lines || []).map(l => ({ t: (l.text || "").trim(), y0: l.bbox.y0 / sc, y1: l.bbox.y1 / sc })).filter(l => l.t);
+    }
     return data.text || "";
   }
 
